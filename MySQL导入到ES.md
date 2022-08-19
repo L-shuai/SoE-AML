@@ -215,9 +215,9 @@ index => "tb_acc"
 - 配置信息的``statement``中的表名要和本次导入的表名对应
 - 配置信息中的``index``要和本次导入的索引对应
 
-### 新建tb_acc并导入
+### 新建tb_acc_txn并导入
 
-首先在kibana的dev-tools内新建tb_acc索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
+首先在kibana的dev-tools内新建tb_acc_txn索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
 
 ```json
 ## 创建索引时指定映射 date2为交易日期
@@ -417,155 +417,11 @@ index => "tb_acc_txn"
 - 配置信息的``statement``中的表名要和本次导入的表名对应
 - 配置信息中的``index``要和本次导入的索引对应
 
-### 新建tb_acc并导入
 
-首先在kibana的dev-tools内新建tb_acc索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
-
-```json
-# 创建索引时指定映射
-PUT /tb_acc
-{
-"settings": {
-"number_of_shards": 1,
-"number_of_replicas": 0
-},
-"mappings": {
-"properties": {
-"id": {
-"type": "integer"
-},
-"time": {
-"type": "date",
-"format": "yyyyMMdd",
-"ignore_malformed": true,
-"null_value": null
-},
-"head_no": {
-"type": "keyword"
-},
-"bank_code1":{
-"type": "keyword"
-},
-"self_acc_name": {
-"type": "keyword"
-},
-"acc_state": {
-"type": "keyword"
-},
-"self_acc_no": {
-"type": "keyword"
-},
-"card_no": {
-"type": "keyword"
-},
-"acc_type":{
-"type": "keyword"
-},
-"acc_type1": {
-"type": "keyword"
-},
-"id_no": {
-"type": "keyword"
-},
-"cst_no": {
-"type": "keyword"
-},
-"fixed_flag": {
-"type": "keyword"
-},
-"ent_cst_type":{
-"type": "keyword"
-},
-"frg_flag": {
-"type": "keyword"
-},
-"open_time": {
-"type": "date",
-"format": "yyyyMMdd",
-"ignore_malformed": true,
-"null_value": null
-},
-"close_time": {
-"type": "date",
-"format": "yyyyMMdd",
-"ignore_malformed": true,
-"null_value": null
-},
-"acc_flag": {
-"type": "keyword"
-},
-"credit_flag": {
-"type": "keyword"
-},
-
-"w_type": {
-"type": "keyword"
-},
-"bank_tel":{
-"type": "keyword"
-},
-"open_type": {
-"type": "keyword"
-},
-"open_type1": {
-"type": "keyword"
-},
-"agent_name": {
-"type": "keyword"
-},
-"agent_tel": {
-"type": "keyword"
-},
-"agent_type":{
-"type": "keyword"
-},
-"agent_no": {
-"type": "keyword"
-},
-"extend1": {
-"type": "keyword"
-},
-"extend2": {
-"type": "keyword"
-}
-}
-}
-}
-```
-
-然后修改``logstash.conf``文件 （在logstash安装目录下的config目录内，**若没有则新建该文件**）。
-
-``logstash.conf``文件配置如下：
-
-```json
-input {
-  jdbc {
-  jdbc_driver_library => "E:\IT\environment config\logstash-7.17.5\logstash-core\lib\jars\mysql-connector-java-8.0.20.jar"
-  jdbc_driver_class => "com.mysql.jdbc.Driver"
-  jdbc_connection_string => "jdbc:mysql://agilec.gicp.net:20221/ccf41?serverTimezone=GMT%2B8"
-  jdbc_user => "ccf41"
-  jdbc_password => "6s2jwgycRn"
-  statement => "SELECT * from tb_acc"
-}
-}
-
-output {
-elasticsearch {
-hosts => [ "localhost:9200" ]
-index => "tb_acc"
-}
-}
-```
-
-**注意事项：**
-
-- 配置信息中的``jdbc_driver_library``路径，改成你自己的路径
-- 配置信息的``statement``中的表名要和本次导入的表名对应
-- 配置信息中的``index``要和本次导入的索引对应
 
 ### 新建tb_cred_txn并导入
 
-首先在kibana的dev-tools内新建tb_acc索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
+首先在kibana的dev-tools内新建tb_cred_txn索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
 
 ```json
 # 创建索引时指定映射
@@ -710,7 +566,7 @@ index => "tb_cred_txn"
 
 ### 新建tb_cst_pers并导入
 
-首先在kibana的dev-tools内新建tb_acc索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
+首先在kibana的dev-tools内新建tb_cst_pers索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
 
 ```json
 # 创建索引时指定映射
@@ -856,7 +712,7 @@ index => "tb_cst_pers"
 
 ### 新建tb_cst_unit并导入
 
-首先在kibana的dev-tools内新建tb_acc索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
+首先在kibana的dev-tools内新建tb_cst_unit索引并指定mapping，即在http://localhost:5601/app/dev_tools#/console 中输入以下代码：
 
 ```json
 # 创建索引时指定映射
