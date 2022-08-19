@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
 import org.springframework.data.elasticsearch.client.RestClients;
 import org.springframework.data.elasticsearch.config.AbstractElasticsearchConfiguration;
+import org.springframework.stereotype.Component;
 
 /**
  * ElasticSearch 客户端配置
@@ -26,7 +27,7 @@ public class RestClientConfig {
 
 //    @Override
     @Bean
-    @Qualifier("highLevelClient")
+    @Qualifier("restHighLevelClient")
     public RestHighLevelClient restHighLevelClient() {
         // RestHighLevelClient highLevelClient = new RestHighLevelClient(
         // RestClient.builder(new HttpHost("127.0.0.1", 9200, "http")));
