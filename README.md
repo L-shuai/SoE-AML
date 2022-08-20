@@ -1,3 +1,8 @@
+<style>
+table {
+margin: auto;
+}
+</style>
 # 工程简介
 
 规则模型1和模型2的代码在[ESForRule1_5](src/test/java/com/soe/lishuai/ESForRule1_5.java)
@@ -35,9 +40,3 @@
 | 19   | 蔡启航 |      |                            |
 | 20   | 蔡启航 |      |                            |
 
-<style>
-table
-{
-    margin: auto;
-}
-</style>
