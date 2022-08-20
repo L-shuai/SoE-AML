@@ -33,7 +33,8 @@ public class RestClientConfig {
         // RestClient.builder(new HttpHost("127.0.0.1", 9200, "http")));
 
         RestHighLevelClient highLevelClient = new RestHighLevelClient(
-                RestClient.builder(new HttpHost("127.0.0.1", 9200, "http"))
+//                RestClient.builder(new HttpHost("202.118.11.39", 9200, "http"))  //服务器端数据源
+                RestClient.builder(new HttpHost("localhost", 9200, "http"))  //本地数据源
                         .setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
                             // 该方法接收一个RequestConfig.Builder对象，对该对象进行修改后然后返回。
                             @Override
