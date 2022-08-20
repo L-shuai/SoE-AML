@@ -154,11 +154,13 @@ public class ESForRule1_5 {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, i);
+            calendar.add(calendar.DATE, 1);
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
+//            System.out.println(curDay);
 //        一天为窗口
-            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(curDay).lte(curDay);
+//            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(curDay).lte(curDay);
+            QueryBuilder queryBuilder1 = QueryBuilders.termQuery("date2",curDay);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
 //        //1,查询Lend_flag=11：付
             QueryBuilder queryBuilder2 = QueryBuilders.termQuery("lend_flag", "11");
@@ -263,8 +265,9 @@ public class ESForRule1_5 {
 //        3天的窗口可能含有重复结果
 //        key:代理人身份证号    value:预警日期
         HashMap<String, String> result = new HashMap<String, String>();
+        SearchRequest searchRequest = new SearchRequest("tb_acc");
+
         for (int i=0;i<daysBetween;i++) {
-            SearchRequest searchRequest = new SearchRequest("tb_acc");
 
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
@@ -367,6 +370,116 @@ public class ESForRule1_5 {
                 {
                     System.out.println("日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString());
                 }
+
+            }
+//            restHighLevelClient.close();
+
+        }
+
+//        }
+
+    }
+
+
+    /**
+     * "计算周期：每日（开户日期）
+     * 通过表tb_cst_pers中
+     * 字段：
+     * Contact1：联系方式
+     * Contact2：其他联系方式1
+     * Contact3：其他联系方式2
+     * 日累计相同联系方式的客户数量进行条件过滤
+     * （客户的3个联系方式中的任意一个联系与另外一个客户的3个联系方式中的任意一个相同，都算相同的联系方式）"
+     *
+     * SELECT * FROM tb_cst_pers WHERE Contact1 != Contact1 and Contact2 != "@N";
+     * 返回值为0 即不存在有客户Contact1 ！= Contact2
+     * 可以认为每个开户卡号的预留手机号都是唯一的
+     * @throws IOException
+     * @throws ParseException
+     */
+    @Test
+    public void rule_3_test() throws IOException, ParseException {
+
+        String[] min_max = get_Min_Max("tb_cst_pers", "open_time",null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+        SearchRequest searchRequest = new SearchRequest("tb_cst_pers");
+
+        for (int i=0;i<daysBetween;i++) {
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+//        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+// 这个时间就是日期往后推一天的结果
+            String curDay = sdf.format(calendar.getTime());
+//            System.out.println(curDay);
+//        一天为窗口
+//            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(curDay).lte(curDay);
+            QueryBuilder queryBuilder1 = QueryBuilders.termQuery("open_time",curDay);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+
+            //        //Contact不能为空
+            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("contact1","@N");
+            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+
+            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("contact1","0");
+            ((BoolQueryBuilder) query).mustNot(queryBuilder2);
+//
+
+//
+
+
+            //嵌套子聚合查询  以self_acc_name账户名称分桶
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_contact1").field("contact1")
+                    .subAggregation(AggregationBuilders.cardinality("count_cst_no").field("cst_no"));
+//                    .subAggregation(AggregationBuilders.count("sum_rmb_amt").field("rmb_amt"));
+
+            //子聚合  管道聚合不能包含子聚合，但是某些类型的管道聚合可以链式使用（比如计算导数的导数）。
+            Map<String, String> bucketsPath = new HashMap<>();
+            bucketsPath.put("count_cst_no", "count_cst_no");
+//            bucketsPath.put("sum_rmb_amt","sum_rmb_amt");
+            Script script = new Script("params.count_cst_no >= 2");
+//            Script script = new Script("params.count_self_bank_code>=3");
+            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
+            agg_self_acc_name.subAggregation(bs);
+
+            agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            searchSourceBuilder.aggregation(agg_self_acc_name);
+            searchSourceBuilder.size(0);
+
+
+            searchSourceBuilder.query(query);
+
+            searchRequest.source(searchSourceBuilder);
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_contact1");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+
+                int len = topHits.getHits().getHits().length;
+                System.out.println(len);
+                for (int j = 0; j < len; j++) {
+                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
+                    // 打印出统计后的数据
+                    System.out.println(sourceAsMap);
+
+                }
+
 
             }
 //            restHighLevelClient.close();
