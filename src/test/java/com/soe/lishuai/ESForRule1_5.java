@@ -77,12 +77,17 @@ public class ESForRule1_5 {
      * @param field
      * @return
      */
-    public String[] get_Min_Max(String index, String field){
+    public String[] get_Min_Max(String index, String field,QueryBuilder queryBuilder){
         SearchRequest searchRequest = new SearchRequest(index);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.size(0);
-        searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+        if(queryBuilder!=null){
+            searchSourceBuilder.query(queryBuilder);
+        }else{
+            searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+        }
+
 
         //最小值  最大值
         MinAggregationBuilder aggregation_min = AggregationBuilders
@@ -115,7 +120,7 @@ public class ESForRule1_5 {
 
     @Test
     public void testGet_Min_Max(){
-        System.out.println(get_Min_Max("tb_acc_txn","hour")[0]);
+        System.out.println(get_Min_Max("tb_acc_txn","hour",null)[0]);
     }
 
 
@@ -137,8 +142,8 @@ public class ESForRule1_5 {
     @Test
     public void rule_1_test() throws IOException, ParseException {
 
-        String[] min_max = get_Min_Max("tb_acc_txn", "hour");
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
         Calendar calendar = new GregorianCalendar();
         calendar.setTime(sdf.parse(min_max[0]));
@@ -153,7 +158,7 @@ public class ESForRule1_5 {
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //        一天为窗口
-            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("hour").format("yyyyMMdd").gte(curDay).lte(curDay);
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(curDay).lte(curDay);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
 //        //1,查询Lend_flag=11：付
             QueryBuilder queryBuilder2 = QueryBuilders.termQuery("lend_flag", "11");
@@ -174,7 +179,7 @@ public class ESForRule1_5 {
             Map<String, String> bucketsPath = new HashMap<>();
             bucketsPath.put("count_self_bank_code", "count_self_bank_code");
         bucketsPath.put("sum_rmb_amt","sum_rmb_amt");
-        Script script = new Script("params.count_self_bank_code >= 3 && params.sum_rmb_amt >= 50000");
+        Script script = new Script("params.count_self_bank_code >= 3 && params.sum_rmb_amt >= 500000");
 //            Script script = new Script("params.count_self_bank_code>=3");
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
             agg_self_acc_name.subAggregation(bs);
@@ -235,17 +240,17 @@ public class ESForRule1_5 {
      */
     @Test
     public void rule_2_test() throws IOException, ParseException {
-        File file = new File("result.txt");
+//        File file = new File("result.txt");
+//
+//        if (!file.exists()) {
+//            file.createNewFile();
+//        }
+//        FileWriter fw = new FileWriter(file.getAbsoluteFile());
+//        BufferedWriter bw = new BufferedWriter(fw);
+//
 
-        if (!file.exists()) {
-            file.createNewFile();
-        }
-        FileWriter fw = new FileWriter(file.getAbsoluteFile());
-        BufferedWriter bw = new BufferedWriter(fw);
 
-
-
-        String[] min_max = get_Min_Max("tb_acc", "open_time");
+        String[] min_max = get_Min_Max("tb_acc", "open_time",QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("agent_no","@N")));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
@@ -254,7 +259,10 @@ public class ESForRule1_5 {
 
         Calendar calendar2 = new GregorianCalendar();
 
-
+        boolean flag = false;
+//        3天的窗口可能含有重复结果
+//        key:代理人身份证号    value:预警日期
+        HashMap<String, String> result = new HashMap<String, String>();
         for (int i=0;i<daysBetween;i++) {
             SearchRequest searchRequest = new SearchRequest("tb_acc");
 
@@ -282,13 +290,18 @@ public class ESForRule1_5 {
             ((BoolQueryBuilder) query).filter(queryBuilder2);
 //
 //        //agent_no不能为空
-            QueryBuilder queryBuilder3 = QueryBuilders.wildcardQuery("agent_no","*");
-            ((BoolQueryBuilder) query).filter(queryBuilder3);
-//            //agent_name不能为空
-            QueryBuilder queryBuilder4 = QueryBuilders.wildcardQuery("agent_name","*");
-            ((BoolQueryBuilder) query).filter(queryBuilder4);
+//            QueryBuilder queryBuilder3 = QueryBuilders.wildcardQuery("agent_no","*");
+//            ((BoolQueryBuilder) query).filter(queryBuilder3);
+////            //agent_name不能为空
+//            QueryBuilder queryBuilder4 = QueryBuilders.wildcardQuery("agent_name","*");
+//            ((BoolQueryBuilder) query).filter(queryBuilder4);
 //
-
+//        //agent_no不能为空
+//            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("agent_no","@N");
+//            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+////            //agent_name不能为空
+//            QueryBuilder queryBuilder4 = QueryBuilders.termQuery("agent_name","@N");
+//            ((BoolQueryBuilder) query).mustNot(queryBuilder4);
 
             //嵌套子聚合查询  以agent_no分桶
             TermsAggregationBuilder agg_agent_no = AggregationBuilders.terms("agg_agent_no").field("agent_no")
@@ -311,7 +324,10 @@ public class ESForRule1_5 {
 
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
-
+            if(!flag){
+                System.out.println(searchSourceBuilder.toString());
+                flag = true;
+            }
             SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
@@ -334,7 +350,23 @@ public class ESForRule1_5 {
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
                 ParsedCardinality count_self_acc_no =  bucketAggregations.get("count_self_acc_no");
-                System.out.println("日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString());
+                boolean isNew = true;
+                if(result.containsKey(r_agent_no)){
+                    String exist_date = result.get(r_agent_no);
+                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
+                    if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+//                        更新value
+                        result.put(r_agent_no,r_date);
+                    }else {
+                        isNew = false;
+                    }
+                }else {
+                    result.put(r_agent_no,r_date);
+                }
+                if(isNew)
+                {
+                    System.out.println("日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString());
+                }
 
             }
 //            restHighLevelClient.close();
