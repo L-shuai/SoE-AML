@@ -90,7 +90,6 @@ public class ESForRule6_10 {
     @Test
     public void rule_6_test() throws IOException, ParseException {
     //获取最大和最小日期范围
-        long startTime = System.currentTimeMillis();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
@@ -151,8 +150,6 @@ public class ESForRule6_10 {
             }
         }
 
-        long endTime = System.currentTimeMillis();
-        System.out.println((endTime-startTime));
     }
     /**
      * "计算周期：三日（交易日期）
@@ -239,6 +236,119 @@ public class ESForRule6_10 {
 
                 }
             }
+        }
+    }
+    /**
+     * 计算周期：三日（交易日期）
+     * 通过表tb_acc_txn中
+     * 字段：
+     * Part_bank_name：交易对方行名称
+     * 计算三日交易对方行名称为：邮储银行、农业银行、信用社的交易笔数
+     * 计算三日总交易笔数
+     * 三日交易对方行名称为：邮储银行、农业银行、信用社的交易笔数≥三日累计总交易笔数*50%
+     * 三日交易对方行名称为：邮储银行、农业银行、信用社的交易金额≥500000
+     **/
+    @Test
+    public void rule_8_test() throws IOException, ParseException{
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+
+        Calendar calendar2 = new GregorianCalendar();
+
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+
+        for (int i=0;i<daysBetween;i++) {
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+            //当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+            //窗口截至时间
+            calendar2.add(calendar2.DATE, 2);
+            String eDate = sdf.format(calendar2.getTime());
+            //3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+
+            //按照账户分桶
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            searchSourceBuilder.aggregation(agg_self_acc_no);
+            searchSourceBuilder.query(query);
+            searchRequest.source(searchSourceBuilder);
+
+            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_self_acc_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+
+                int len = topHits.getHits().getHits().length;
+                int youchu_count =0; //邮储银行交易次数
+                double youchu_money = 0;//邮储银行交易金额
+                int nongye_count = 0;//农业银行交易次数
+                double nongye_money = 0;//农业银行交易金额
+                int xinyongshe_count = 0;//信用社银行交易次数
+                double xinyongshe_money = 0;//信用社银行交易金额
+                int total_transaction_count = 0;//总交易次数
+                //对于每个桶（用户）计算出他的邮储银行、农业银行、信用社的交易次数以及他的交易总次数还有对应三个银行的交易金额
+                for (int j = 0; j < len; j++) {
+                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
+                    // 打印出统计后的数据
+                    String bank_name = (String) sourceAsMap.get("part_bank_name");
+                    Double rmb_amt = (Double) sourceAsMap.get("rmb_amt");
+                    total_transaction_count += 1;
+                    if(bank_name.contains("邮政储")){
+                        youchu_count += 1;
+                        youchu_money += rmb_amt;
+                    }
+                    else if (bank_name.contains("农业")){
+                        nongye_count += 1;
+                        nongye_money += rmb_amt;
+                    }
+                    else if(bank_name.contains("信用社")){
+                        xinyongshe_count += 1;
+                        xinyongshe_money += rmb_amt;
+                    }
+                    else{
+                        continue;
+                    }
+                }
+               //筛选出三个银行交易笔数相加>=总交易笔数*0.5 以及 三个银行消费金额相加>=500000的用户
+                if(youchu_count + nongye_count + xinyongshe_count >= total_transaction_count * 0.5 && youchu_money+nongye_money+xinyongshe_money>=500000){
+                    System.out.println("邮储银行次数："+youchu_count+"邮储金额："+youchu_money);
+                    System.out.println("农业银行次数："+nongye_count+"农业金额："+nongye_money);
+                    System.out.println("信用社次数："+xinyongshe_count+"信用社金额："+xinyongshe_money);
+//                    for (int j = 0; j < len; j++) {
+//                        Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
+//                        // 打印出统计后的数据
+//                        System.out.println(sourceAsMap);
+//
+//                    }
+                }else{
+                    System.out.println("None!");
+                    continue;
+                }
+        }
         }
     }
 }
