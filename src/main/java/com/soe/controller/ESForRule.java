@@ -1,13 +1,18 @@
 package com.soe.controller;
 
+import com.soe.utils.IpUtil;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.reindex.BulkByScrollResponse;
+import org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import org.elasticsearch.script.Script;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
@@ -631,6 +636,54 @@ public class ESForRule {
 
 //        }
         return list;
+    }
+
+    @GetMapping("/update_tb_acc_txt_Nation")
+    public void update_tb_acc_txt_Nation() throws IOException {
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");//指定搜索索引
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
+        QueryBuilder query = QueryBuilders.boolQuery();
+        QueryBuilder queryBuilder1 = QueryBuilders.termQuery("bord_flag","11");
+//        ((BoolQueryBuilder) query).filter(queryBuilder1);
+        //Time：交易时间=00:00至06:00
+        QueryBuilder queryBuilder2 = QueryBuilders.termQuery("ip_code","@N");
+        ((BoolQueryBuilder) query).mustNot(queryBuilder2);
+
+        QueryBuilder queryBuilder3 = QueryBuilders.termQuery("ip_code","");
+        ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+
+//        sourceBuilder.query(QueryBuilders.boolQuery()
+//                //查询条件  Bord_flag：跨境交易标识 11
+//                .filter(QueryBuilders.termQuery("bord_flag","11")).mustNot(QueryBuilders.termQuery("ip_code","@N"))).fetchSource(new String[]{"ip_code"}, new String[]{});
+//
+        sourceBuilder.query(query);
+       sourceBuilder.size(200000000);
+
+        searchRequest.source(sourceBuilder);//指定查询条件
+
+        //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+        //获取结果
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        for(SearchHit hit:hits){
+            String id = hit.getId();
+//            System.out.println("id: "+id+"  source: "+hit.getSourceAsString());
+            UpdateRequest updateRequest = new UpdateRequest("tb_acc_txn", id);
+
+            Map<String, Object> kvs = new HashMap<>();
+            System.out.println(hit.getSourceAsMap().get("ip_code"));
+            String nation = IpUtil.getNationByIP((String) hit.getSourceAsMap().get("ip_code"));
+            System.out.println(nation);
+            kvs.put("nation", nation);
+            updateRequest.doc(kvs);
+//            updateRequest.timeout(TimeValue.timeValueSeconds(1));
+//            updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
+            //数据为存储而不是更新
+            restHighLevelClient.update(updateRequest, RequestOptions.DEFAULT);
+        }
+
+
     }
 
 
