@@ -710,4 +710,143 @@ public class ESForRule {
     }
 
 
+    /**
+     * "计算周期：三日（交易日期）
+     * 通过表tb_acc_txn中
+     * 字段：
+     * Bord_flag：跨境交易标识
+     * Nation：交易对方所在国家或地区
+     * 计算三日交易跨境交易标识=11的交易根据ip地址库判断交易对方所在国家或地区
+     * 三日交易对方所在国家或地区≥10
+     * 进行条件过滤"
+     * @return
+     * @throws IOException
+     * @throws ParseException
+     */
+    @GetMapping("/rule_12")
+    public List<String> rule_12() throws IOException, ParseException {
+
+        List<String> list = new ArrayList<>();
+
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("bord_flag","11")));
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+
+        Calendar calendar2 = new GregorianCalendar();
+
+        boolean flag = false;
+//        3天的窗口可能含有重复结果
+//        key:代理人身份证号    value:预警日期
+        HashMap<String, String> result = new HashMap<String, String>();
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+
+        for (int i=0;i<daysBetween;i++) {
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+//            当前时间
+            String curDay = sdf.format(calendar.getTime());
+//            窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+//            窗口截至时间
+            calendar2.add(calendar2.DATE, 2);
+            String eDate = sdf.format(calendar2.getTime());
+//            窗口复原
+//            calendar2.setTime(sdf.parse(bDate));
+//            System.out.println(bDate+"  -  "+eDate);
+//        3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+
+            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("bord_flag","11");
+        ((BoolQueryBuilder) query).filter(queryBuilder2);
+
+            //嵌套子聚合查询  以Self_acc_no分桶
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
+                    .subAggregation(AggregationBuilders.cardinality("count_nation").field("nation")); //跨境nation数量
+
+
+            //子聚合  管道聚合不能包含子聚合
+            Map<String, String> bucketsPath = new HashMap<>();
+//            bucketsPath.put("agg_self_acc_no", "agg_self_acc_no");
+            bucketsPath.put("count_nation", "count_nation");
+            Script script = new Script("params.count_nation >= 2");
+            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
+            agg_self_acc_no.subAggregation(bs);
+
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            searchSourceBuilder.aggregation(agg_self_acc_no);
+            searchSourceBuilder.size(0);
+
+
+            searchSourceBuilder.query(query);
+
+            searchRequest.source(searchSourceBuilder);
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            if(!flag){
+                System.out.println(searchSourceBuilder.toString());
+                flag = true;
+            }
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_self_acc_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+
+                int len = topHits.getHits().getHits().length;
+                System.out.println(len);
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_date = (String) sourceAsMap.get("date2");
+                String r_nation = (String) sourceAsMap.get("nation");
+                String r_cst_no = (String) sourceAsMap.get("cst_no");
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                ParsedCardinality count_nation =  bucketAggregations.get("count_nation");
+//                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
+//                System.out.println(record);
+
+                boolean isNew = true;
+                if(result.containsKey(r_cst_no)){
+                    String exist_date = result.get(r_cst_no);
+                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+                    if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+//                        更新value
+                        result.put(r_cst_no,r_date);
+                    }else {
+                        isNew = false;
+                    }
+                }else {
+                    result.put(r_cst_no,r_date);
+                }
+                if(isNew)
+                {
+                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
+                    list.add(record);
+                    System.out.println(record);
+                }
+
+            }
+//            restHighLevelClient.close();
+
+        }
+
+//        }
+        return list;
+    }
+
+
 }
