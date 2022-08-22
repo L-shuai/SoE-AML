@@ -282,6 +282,10 @@ public class ESForRule6_10 {
 
             //按照账户分桶
             TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
+            TermsAggregationBuilder agg_part_bank_name = AggregationBuilders.terms("agg_part_bank_name").field("part_bank_name")
+                            .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt"))
+                            .subAggregation(AggregationBuilders.count("count_part_bank_name").field("part_bank_name"));
+            agg_self_acc_no.subAggregation(agg_part_bank_name);
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
             searchSourceBuilder.aggregation(agg_self_acc_no);
             searchSourceBuilder.query(query);
@@ -300,9 +304,11 @@ public class ESForRule6_10 {
                 // 解析bucket
                 Aggregations bucketAggregations = bucket.getAggregations();
 
-                ParsedTopHits topHits = bucketAggregations.get("topHits");
+                ParsedTerms per_bank_name = bucketAggregations.get("agg_part_bank_name");
+                ParsedTopHits topHits1 = bucketAggregations.get("topHits");
+                int len_per_user = topHits1.getHits().getHits().length;
 
-                int len = topHits.getHits().getHits().length;
+                List<? extends Terms.Bucket> buckets1 = per_bank_name.getBuckets();
                 int youchu_count =0; //邮储银行交易次数
                 double youchu_money = 0;//邮储银行交易金额
                 int nongye_count = 0;//农业银行交易次数
@@ -310,45 +316,108 @@ public class ESForRule6_10 {
                 int xinyongshe_count = 0;//信用社银行交易次数
                 double xinyongshe_money = 0;//信用社银行交易金额
                 int total_transaction_count = 0;//总交易次数
-                //对于每个桶（用户）计算出他的邮储银行、农业银行、信用社的交易次数以及他的交易总次数还有对应三个银行的交易金额
-                for (int j = 0; j < len; j++) {
-                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
-                    // 打印出统计后的数据
-                    String bank_name = (String) sourceAsMap.get("part_bank_name");
-                    Double rmb_amt = (Double) sourceAsMap.get("rmb_amt");
-                    total_transaction_count += 1;
-                    if(bank_name.contains("邮政储")){
-                        youchu_count += 1;
-                        youchu_money += rmb_amt;
+                for (Terms.Bucket bucket1 : buckets1) {
+                    Aggregations bucketAggregations1 = bucket1.getAggregations();
+                    Sum sum = bucketAggregations1.get("sum_rmb_amt");
+                    ValueCount count = bucketAggregations1.get("count_part_bank_name");
+                    total_transaction_count += count.value();
+                    if(bucket1.getKeyAsString().contains("邮储")){
+                        youchu_count += count.value();
+                        youchu_money += sum.value();
                     }
-                    else if (bank_name.contains("农业")){
-                        nongye_count += 1;
-                        nongye_money += rmb_amt;
+                    else if(bucket1.getKeyAsString().contains("农业")){
+                        nongye_count += count.value();
+                        nongye_money += sum.value();
                     }
-                    else if(bank_name.contains("信用社")){
-                        xinyongshe_count += 1;
-                        xinyongshe_money += rmb_amt;
+                    else if(bucket1.getKeyAsString().contains("信用社")){
+                        xinyongshe_count += count.value();
+                        xinyongshe_money += sum.value();
                     }
                     else{
                         continue;
                     }
                 }
-               //筛选出三个银行交易笔数相加>=总交易笔数*0.5 以及 三个银行消费金额相加>=500000的用户
-                if(youchu_count + nongye_count + xinyongshe_count >= total_transaction_count * 0.5 && youchu_money+nongye_money+xinyongshe_money>=500000){
-                    System.out.println("邮储银行次数："+youchu_count+"邮储金额："+youchu_money);
-                    System.out.println("农业银行次数："+nongye_count+"农业金额："+nongye_money);
-                    System.out.println("信用社次数："+xinyongshe_count+"信用社金额："+xinyongshe_money);
-//                    for (int j = 0; j < len; j++) {
-//                        Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
+
+                if(youchu_count + nongye_count + xinyongshe_count >= total_transaction_count*0.5 && youchu_money + nongye_money + xinyongshe_money >= 500000){
+                    System.out.println("邮储银行交易次数："+youchu_count);
+                    System.out.println("邮储银行交易金额："+youchu_count);
+                    System.out.println("农业银行交易次数："+nongye_count);
+                    System.out.println("农业银行交易金额："+nongye_money);
+                    System.out.println("信用社交易次数："+xinyongshe_count);
+                    System.out.println("信用社交易金额："+xinyongshe_money);
+                    System.out.println("总交易次数："+total_transaction_count);
+//                    for (int j = 0; j < len_per_user; j++) {
+//                        Map<String, Object> sourceAsMap = topHits1.getHits().getHits()[j].getSourceAsMap();
 //                        // 打印出统计后的数据
 //                        System.out.println(sourceAsMap);
 //
 //                    }
-                }else{
-                    System.out.println("None!");
-                    continue;
                 }
+                else{
+                    System.out.println("该账户无符合条件记录。");
+                }
+            }
         }
+    }
+
+    @Test
+    public void rule_10_test() throws IOException, ParseException{
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+        for (int i = 0; i < daysBetween; i++) {
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+            String curDay = sdf.format(calendar.getTime());
+
+            BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
+            //过滤日期
+            queryBuilder.filter(QueryBuilders.termQuery("date2", curDay));
+
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
+                    .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt"));
+
+            //按交易账户数量大于等于3过滤
+            Map<String, String> bucketsPath = new HashMap<>();
+            bucketsPath.put("sum_rmb_amt", "sum_rmb_amt");
+            //判断每个账户的总交易金额的结尾是否为吉利数
+            Script script = new Script("(params.sum_rmb_amt - 666)%1000 == 0 || (params.sum_rmb_amt - 888)%1000 == 0 || (params.sum_rmb_amt - 99)%100 == 0 ");
+            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
+            agg_self_acc_no.subAggregation(bs);
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            searchSourceBuilder.query(queryBuilder);
+            searchSourceBuilder.aggregation(agg_self_acc_no);
+            searchSourceBuilder.size(0);
+
+            searchRequest.source(searchSourceBuilder);
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_self_acc_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+                Sum sum = bucketAggregations.get("sum_rmb_amt");
+                System.out.println(sum.getValueAsString());
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+
+                int len = topHits.getHits().getHits().length;
+                for (int j = 0; j < len; j++) {
+                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
+                    // 打印出统计后的数据
+                    System.out.println(sourceAsMap);
+                }
+            }
         }
     }
 }
