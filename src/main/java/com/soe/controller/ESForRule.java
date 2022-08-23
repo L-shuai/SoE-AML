@@ -1,6 +1,8 @@
 package com.soe.controller;
 
+import com.soe.utils.CsvUtil;
 import com.soe.utils.IpUtil;
+import lombok.SneakyThrows;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateRequest;
@@ -37,7 +39,10 @@ import java.util.*;
 public class ESForRule {
 
     private final RestHighLevelClient restHighLevelClient;
-
+    //结果集csv文件的标题行
+    private final String headDataStr ="规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付";
+    //最终结果csv文件路径
+    private final String csvfile = "./result/result.csv";
 
     @Autowired
     public ESForRule(RestHighLevelClient restHighLevelClient){
@@ -133,6 +138,7 @@ public class ESForRule {
      */
     @GetMapping("/rule_1")
     public List<String> rule_1() throws IOException, ParseException {
+        System.out.println("rule_1 : begin");
 
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
@@ -217,7 +223,10 @@ public class ESForRule {
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
 //                网点数量
                 ParsedCardinality count_self_bank_code =  bucketAggregations.get("count_self_bank_code");
-                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+r_lend1+", 折人民币交易金额-付="+r_lend2.getValueAsString()+", 交易笔数收=0 , 交易笔数付="+len;
+//                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+r_lend1+", 折人民币交易金额-付="+r_lend2.getValueAsString()+", 交易笔数收=0 , 交易笔数付="+len;
+                //写入到csv文件，注意各列对其，用英文逗号隔开
+                //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
+                String record = "JRSJ-001,"+r_date+","+r_cst_no+","+r_self_acc_name+","+r_lend1+","+r_lend2.getValueAsString()+",0,"+len;
                 list.add(record);
 //                for (int j = 0; j < len; j++) {
 //                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
@@ -233,6 +242,8 @@ public class ESForRule {
         }
 
 //        }
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_1 : end");
         return list;
     }
 
@@ -257,6 +268,7 @@ public class ESForRule {
 //        FileWriter fw = new FileWriter(file.getAbsoluteFile());
 //        BufferedWriter bw = new BufferedWriter(fw);
 //
+        System.out.println("rule_2 : begin");
 
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc", "open_time",QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("agent_no","@N")));
@@ -375,7 +387,10 @@ public class ESForRule {
                 }
                 if(isNew)
                 {
-                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString();
+//                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString();
+                    //写入到csv文件，注意各列对其，用英文逗号隔开
+                    //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
+                    String record = "JRSJ-002,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
                     list.add(record);
 //                    System.out.println(record);
                 }
@@ -386,6 +401,8 @@ public class ESForRule {
         }
 
 //        }
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_2 : end");
     return list;
     }
 
@@ -408,6 +425,7 @@ public class ESForRule {
      */
     @GetMapping("/rule_3")
     public List<String> rule_3() throws IOException, ParseException {
+        System.out.println("rule_3 : begin");
 
         List<String> list = new ArrayList<>();
 
@@ -494,9 +512,12 @@ public class ESForRule {
                     String r_date = (String) sourceAsMap.get("open_time");
                     String r_contact1 = (String) sourceAsMap.get("contact1");
                     String r_cst_no = (String) sourceAsMap.get("cst_no");
-                    String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                    String r_acc_name = (String) sourceAsMap.get("acc_name");
                     ParsedCardinality count_cst_no =  bucketAggregations.get("count_cst_no");
-                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 联系方式="+r_contact1+", 重复数="+count_cst_no.getValueAsString();
+//                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_acc_name+", 联系方式="+r_contact1+", 重复数="+count_cst_no.getValueAsString();
+                    //写入到csv文件，注意各列对其，用英文逗号隔开
+                    //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
+                    String record = "JRSJ-003,"+r_date+","+r_cst_no+","+r_acc_name+",,,,";
                     list.add(record);
                 }
 
@@ -507,6 +528,8 @@ public class ESForRule {
         }
 
 //        }
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_3 : end");
         return list;
     }
 
@@ -525,6 +548,7 @@ public class ESForRule {
      */
     @GetMapping("/rule_4")
     public List<String> rule_4() throws IOException, ParseException {
+        System.out.println("rule_4 : begin");
 
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
@@ -627,7 +651,10 @@ public class ESForRule {
                     }
 
                 }
-                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+lend1_amt+", 折人民币交易金额-付="+lend2_amt+", 交易笔数收="+lend1_count+" , 交易笔数付="+lend2_count+", 总交易笔数="+count_self_acc_no.getValueAsString();
+//                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+lend1_amt+", 折人民币交易金额-付="+lend2_amt+", 交易笔数收="+lend1_count+" , 交易笔数付="+lend2_count+", 总交易笔数="+count_self_acc_no.getValueAsString();
+                //写入到csv文件，注意各列对其，用英文逗号隔开
+                //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
+                String record = "JRSJ-004,"+r_date+","+r_cst_no+","+r_self_acc_name+","+lend1_amt+","+lend2_amt+","+lend1_count+","+lend2_count;
                 list.add(record);
 
             }
@@ -636,6 +663,8 @@ public class ESForRule {
         }
 
 //        }
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_4 : end");
         return list;
     }
 
@@ -725,6 +754,7 @@ public class ESForRule {
      */
     @GetMapping("/rule_12")
     public List<String> rule_12() throws IOException, ParseException {
+        System.out.println("rule_12 : begin");
 
         List<String> list = new ArrayList<>();
 
@@ -834,7 +864,8 @@ public class ESForRule {
                 }
                 if(isNew)
                 {
-                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
+//                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
+                    String record = "JRSJ-012,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
                     list.add(record);
                     System.out.println(record);
                 }
@@ -845,8 +876,26 @@ public class ESForRule {
         }
 
 //        }
+
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_12 : end");
         return list;
     }
 
+    @SneakyThrows
+//    @ApiOperation("异步 有返回值")
+    @GetMapping("/searchAll")
+    public String searchAll() {
+//        CompletableFuture<String> createOrder = asyncService.doSomething1("create order");
+//        CompletableFuture<String> reduceAccount = asyncService.doSomething2("reduce account");
+//        CompletableFuture<String> saveLog = asyncService.doSomething3("save log");
+//
+//        // 等待所有任务都执行完
+//        CompletableFuture.allOf(createOrder, reduceAccount, saveLog).join();
+//        // 获取每个任务的返回结果
+//        String result = createOrder.get() + reduceAccount.get() + saveLog.get();
+//        return result;
+        return "over";
+    }
 
 }
