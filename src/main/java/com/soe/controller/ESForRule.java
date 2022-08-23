@@ -1,7 +1,7 @@
 package com.soe.controller;
 
 import com.soe.utils.CsvUtil;
-import com.soe.utils.IpUtil;
+//import com.soe.utils.IpUtil;
 import lombok.SneakyThrows;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -678,75 +678,75 @@ public class ESForRule {
         return list;
     }
 
-    @GetMapping("/update_tb_acc_txt_Nation")
-    public void update_tb_acc_txt_Nation() throws IOException {
-        int len =22000000; //设初赛数据量
-        int unit = 10000;// 一次查询10000
-        int step = len/unit;
-
-        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");//指定搜索索引
-        for(int i=0;i<step;i++){
-            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
-            QueryBuilder query = QueryBuilders.boolQuery();
-            QueryBuilder queryBuilder1 = QueryBuilders.termQuery("bord_flag","11");
-//        ((BoolQueryBuilder) query).filter(queryBuilder1);
-            //Time：交易时间=00:00至06:00
-            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("ip_code","@N");
-            ((BoolQueryBuilder) query).mustNot(queryBuilder2);
-
-            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("ip_code","");
-            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
-            sourceBuilder.fetchSource(new String[]{"ip_code"}, new String[]{});
-            //已赋值的
-//            QueryBuilder queryBuilder4 = QueryBuilders.termQuery("nation","@N");
-//        ((BoolQueryBuilder) query).filter(queryBuilder4);
-//        sourceBuilder.query(QueryBuilders.boolQuery()
-//                //查询条件  Bord_flag：跨境交易标识 11
-//                .filter(QueryBuilders.termQuery("bord_flag","11")).mustNot(QueryBuilders.termQuery("ip_code","@N"))).fetchSource(new String[]{"ip_code"}, new String[]{});
+//    @GetMapping("/update_tb_acc_txt_Nation")
+//    public void update_tb_acc_txt_Nation() throws IOException {
+//        int len =22000000; //设初赛数据量
+//        int unit = 10000;// 一次查询10000
+//        int step = len/unit;
 //
-            sourceBuilder.query(query);
-            sourceBuilder.from(i*unit);
-            sourceBuilder.size(unit);
-            //进度
-            System.out.println(i*unit);
-            searchRequest.source(sourceBuilder);//指定查询条件
-
-            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
-            builder.setHttpAsyncResponseConsumerFactory(
-                    new HttpAsyncResponseConsumerFactory
-                            //修改为5000MB
-                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
-            RequestOptions requestOptions=builder.build();
-
-            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
-//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
-//            System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
-            //获取结果
-            SearchHit[] hits = searchResponse.getHits().getHits();
-            if(searchResponse.getHits().getTotalHits().value>0){
-                for(SearchHit hit:hits){
-                    String id = hit.getId();
-//            System.out.println("id: "+id+"  source: "+hit.getSourceAsString());
-                    UpdateRequest updateRequest = new UpdateRequest("tb_acc_txn", id);
-
-                    Map<String, Object> kvs = new HashMap<>();
-//                    System.out.println(hit.getSourceAsMap().get("ip_code"));
-                    String nation = IpUtil.getNationByIP((String) hit.getSourceAsMap().get("ip_code"));
-//                    System.out.println(nation);
-                    kvs.put("nation", nation);
-                    updateRequest.doc(kvs);
-//            updateRequest.timeout(TimeValue.timeValueSeconds(1));
-//            updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-                    //更新
-                    restHighLevelClient.update(updateRequest, RequestOptions.DEFAULT);
-                }
-            }
-        }
-        System.out.println("更新完成");
-
-
-    }
+//        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");//指定搜索索引
+//        for(int i=0;i<step;i++){
+//            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
+//            QueryBuilder query = QueryBuilders.boolQuery();
+//            QueryBuilder queryBuilder1 = QueryBuilders.termQuery("bord_flag","11");
+////        ((BoolQueryBuilder) query).filter(queryBuilder1);
+//            //Time：交易时间=00:00至06:00
+//            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("ip_code","@N");
+//            ((BoolQueryBuilder) query).mustNot(queryBuilder2);
+//
+//            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("ip_code","");
+//            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+//            sourceBuilder.fetchSource(new String[]{"ip_code"}, new String[]{});
+//            //已赋值的
+////            QueryBuilder queryBuilder4 = QueryBuilders.termQuery("nation","@N");
+////        ((BoolQueryBuilder) query).filter(queryBuilder4);
+////        sourceBuilder.query(QueryBuilders.boolQuery()
+////                //查询条件  Bord_flag：跨境交易标识 11
+////                .filter(QueryBuilders.termQuery("bord_flag","11")).mustNot(QueryBuilders.termQuery("ip_code","@N"))).fetchSource(new String[]{"ip_code"}, new String[]{});
+////
+//            sourceBuilder.query(query);
+//            sourceBuilder.from(i*unit);
+//            sourceBuilder.size(unit);
+//            //进度
+//            System.out.println(i*unit);
+//            searchRequest.source(sourceBuilder);//指定查询条件
+//
+//            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+//            builder.setHttpAsyncResponseConsumerFactory(
+//                    new HttpAsyncResponseConsumerFactory
+//                            //修改为5000MB
+//                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+//            RequestOptions requestOptions=builder.build();
+//
+//            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+////            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+////            System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+//            //获取结果
+//            SearchHit[] hits = searchResponse.getHits().getHits();
+//            if(searchResponse.getHits().getTotalHits().value>0){
+//                for(SearchHit hit:hits){
+//                    String id = hit.getId();
+////            System.out.println("id: "+id+"  source: "+hit.getSourceAsString());
+//                    UpdateRequest updateRequest = new UpdateRequest("tb_acc_txn", id);
+//
+//                    Map<String, Object> kvs = new HashMap<>();
+////                    System.out.println(hit.getSourceAsMap().get("ip_code"));
+//                    String nation = IpUtil.getNationByIP((String) hit.getSourceAsMap().get("ip_code"));
+////                    System.out.println(nation);
+//                    kvs.put("nation", nation);
+//                    updateRequest.doc(kvs);
+////            updateRequest.timeout(TimeValue.timeValueSeconds(1));
+////            updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
+//                    //更新
+//                    restHighLevelClient.update(updateRequest, RequestOptions.DEFAULT);
+//                }
+//            }
+//        }
+//        System.out.println("更新完成");
+//
+//
+//    }
 
 
     /**
