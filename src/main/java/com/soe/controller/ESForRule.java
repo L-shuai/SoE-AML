@@ -229,7 +229,7 @@ public class ESForRule {
 //                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+r_lend1+", 折人民币交易金额-付="+r_lend2.getValueAsString()+", 交易笔数收=0 , 交易笔数付="+len;
                 //写入到csv文件，注意各列对其，用英文逗号隔开
                 //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                String record = "JRSJ-001,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",r_lend1)+","+String.format("%.2f",r_lend2.getValueAsString())+",0,"+len;
+                String record = "JRSJ-001,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",r_lend1)+","+String.format("%.2f",r_lend2.getValueAsString())+",0,"+String.valueOf(len);
                 list.add(record);
 //                for (int j = 0; j < len; j++) {
 //                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
@@ -277,6 +277,8 @@ public class ESForRule {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc", "open_time",QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("agent_no","@N")));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
         Calendar calendar = new GregorianCalendar();
@@ -379,7 +381,7 @@ public class ESForRule {
                 boolean isNew = true;
                 if(result.containsKey(r_agent_no)){
                     String exist_date = result.get(r_agent_no);
-                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
+//                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
                     if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
 //                        更新value
                         result.put(r_agent_no,r_date);
@@ -394,7 +396,7 @@ public class ESForRule {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString();
                     //写入到csv文件，注意各列对其，用英文逗号隔开
                     //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                    String record = "JRSJ-002,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
+                    String record = "JRSJ-002,"+sdf2.format(sdf.parse(r_date))+","+r_cst_no+","+r_self_acc_name+",,,,";
                     list.add(record);
 //                    System.out.println(record);
                 }
@@ -436,6 +438,8 @@ public class ESForRule {
 
         String[] min_max = get_Min_Max("tb_cst_pers", "open_time",null);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
         Calendar calendar = new GregorianCalendar();
         calendar.setTime(sdf.parse(min_max[0]));
@@ -522,7 +526,7 @@ public class ESForRule {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_acc_name+", 联系方式="+r_contact1+", 重复数="+count_cst_no.getValueAsString();
                     //写入到csv文件，注意各列对其，用英文逗号隔开
                     //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                    String record = "JRSJ-003,"+r_date+","+r_cst_no+","+r_acc_name+",,,,";
+                    String record = "JRSJ-003,"+sdf2.format(sdf.parse(r_date))+","+r_cst_no+","+r_acc_name+",,,,";
                     list.add(record);
                 }
 
@@ -660,7 +664,7 @@ public class ESForRule {
 //                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+lend1_amt+", 折人民币交易金额-付="+lend2_amt+", 交易笔数收="+lend1_count+" , 交易笔数付="+lend2_count+", 总交易笔数="+count_self_acc_no.getValueAsString();
                 //写入到csv文件，注意各列对其，用英文逗号隔开
                 //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                String record = "JRSJ-004,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+lend1_count+","+lend2_count;
+                String record = "JRSJ-004,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                 list.add(record);
 
             }
