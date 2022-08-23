@@ -229,7 +229,7 @@ public class ESForRule {
 //                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+r_lend1+", 折人民币交易金额-付="+r_lend2.getValueAsString()+", 交易笔数收=0 , 交易笔数付="+len;
                 //写入到csv文件，注意各列对其，用英文逗号隔开
                 //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                String record = "JRSJ-001,"+r_date+","+r_cst_no+","+r_self_acc_name+","+r_lend1+","+r_lend2.getValueAsString()+",0,"+len;
+                String record = "JRSJ-001,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",r_lend1)+","+String.format("%.2f",r_lend2.getValueAsString())+",0,"+len;
                 list.add(record);
 //                for (int j = 0; j < len; j++) {
 //                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
@@ -660,7 +660,7 @@ public class ESForRule {
 //                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 折人民币交易金额-收="+lend1_amt+", 折人民币交易金额-付="+lend2_amt+", 交易笔数收="+lend1_count+" , 交易笔数付="+lend2_count+", 总交易笔数="+count_self_acc_no.getValueAsString();
                 //写入到csv文件，注意各列对其，用英文逗号隔开
                 //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                String record = "JRSJ-004,"+r_date+","+r_cst_no+","+r_self_acc_name+","+lend1_amt+","+lend2_amt+","+lend1_count+","+lend2_count;
+                String record = "JRSJ-004,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+lend1_count+","+lend2_count;
                 list.add(record);
 
             }
