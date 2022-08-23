@@ -132,7 +132,7 @@ public class ESForRule {
      * 日累计取现交易金额≥500000
      * 进行条件过滤"
      */
-    @GetMapping("/rule_1")
+    @GetMapping("rule_1")
     @Async("rule")
     public List<String> rule_1() throws IOException, ParseException {
         System.out.println("rule_1 : begin");
@@ -255,7 +255,7 @@ public class ESForRule {
      * @throws IOException
      * @throws ParseException
      */
-    @GetMapping("/rule_2")
+    @GetMapping("rule_2")
     @Async("rule")
     public List<String> rule_2() throws IOException, ParseException {
 //        File file = new File("result.txt");
@@ -423,7 +423,7 @@ public class ESForRule {
      * @throws IOException
      * @throws ParseException
      */
-    @GetMapping("/rule_3")
+    @GetMapping("rule_3")
     @Async("rule")
     public List<String> rule_3() throws IOException, ParseException {
         System.out.println("rule_3 : begin");
@@ -549,7 +549,7 @@ public class ESForRule {
      * @throws IOException
      * @throws ParseException
      */
-    @GetMapping("/rule_4")
+    @GetMapping("rule_4")
     @Async("rule")
     public List<String> rule_4() throws IOException, ParseException {
         System.out.println("rule_4 : begin");
@@ -756,7 +756,7 @@ public class ESForRule {
      * @throws IOException
      * @throws ParseException
      */
-    @GetMapping("/rule_12")
+    @GetMapping("rule_12")
     @Async("rule")
     public List<String> rule_12() throws IOException, ParseException {
         System.out.println("rule_12 : begin");
@@ -899,7 +899,7 @@ public class ESForRule {
      * 进行条件过滤
      * @return
      */
-    @GetMapping("/rule_16")
+    @GetMapping("rule_16")
     @Async("rule")
     public List<String> rule_16() throws ParseException, IOException {
         System.out.println("rule_16 : begin");
@@ -1062,14 +1062,14 @@ public class ESForRule {
 
 
         }
-        CsvUtil.writeToCsv("", list, csvfile, true);
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
         System.out.println("rule_16 : end");
         return list;
     }
 
     @SneakyThrows
 //    @ApiOperation("异步 有返回值")
-    @GetMapping("/searchAll")
+    @GetMapping("searchAll")
     public String searchAll() {
 //        CompletableFuture<String> createOrder = asyncService.doSomething1("create order");
 //        CompletableFuture<String> reduceAccount = asyncService.doSomething2("reduce account");
@@ -1085,6 +1085,7 @@ public class ESForRule {
         rule_3();
         rule_4();
         rule_12();
+        rule_16();
         return "over";
     }
 

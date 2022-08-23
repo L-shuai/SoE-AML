@@ -31,8 +31,8 @@ public class CsvUtil {
 
 //            buffWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(csvFile), "utf-8"));
             // 由于csv是UTF-8格式，用Excel打开就会乱码，所以加个BOM告诉Excel用UTF-8打开
-            String csv = new String(new byte[] { (byte) 0xEF, (byte) 0xBB,(byte) 0xBF });
-            buffWriter.write(csv);
+//            String csv = new String(new byte[] { (byte) 0xEF, (byte) 0xBB,(byte) 0xBF });
+//            buffWriter.write(csv);
             //头部不为空则写入头部，并且换行
             if (StringUtils.isNotBlank(headLabel)) {
                 FileReader fileReader = null;
@@ -133,6 +133,13 @@ public class CsvUtil {
         dataList.add("JRSJ-001,2021-01-19,9999980070068446,李佳琪,100000,600000,1,4");
         dataList.add("JRSJ-001,2021-01-19,9999980070068446,李佳琪,100000,600000,1,9");
         CsvUtil.writeToCsv(headDataStr, dataList, csvfile, true);
+    }
+
+    @Test
+    public void readCsv() {
+        String headDataStr = "规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付";
+        String csvfile = "./result/result.csv";
+        System.out.println(readFromCsv(csvfile));
     }
 
 }
