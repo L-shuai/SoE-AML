@@ -26,6 +26,8 @@ import org.elasticsearch.search.aggregations.metrics.*;
 import org.elasticsearch.search.aggregations.pipeline.BucketSelectorPipelineAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -137,6 +139,7 @@ public class ESForRule {
      * 进行条件过滤"
      */
     @GetMapping("/rule_1")
+    @Async("rule")
     public List<String> rule_1() throws IOException, ParseException {
         System.out.println("rule_1 : begin");
 
@@ -259,6 +262,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("/rule_2")
+    @Async("rule")
     public List<String> rule_2() throws IOException, ParseException {
 //        File file = new File("result.txt");
 //
@@ -424,6 +428,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("/rule_3")
+    @Async("rule")
     public List<String> rule_3() throws IOException, ParseException {
         System.out.println("rule_3 : begin");
 
@@ -547,6 +552,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("/rule_4")
+    @Async("rule")
     public List<String> rule_4() throws IOException, ParseException {
         System.out.println("rule_4 : begin");
 
@@ -753,6 +759,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("/rule_12")
+    @Async("rule")
     public List<String> rule_12() throws IOException, ParseException {
         System.out.println("rule_12 : begin");
 
@@ -895,6 +902,11 @@ public class ESForRule {
 //        // 获取每个任务的返回结果
 //        String result = createOrder.get() + reduceAccount.get() + saveLog.get();
 //        return result;
+        rule_1();
+        rule_2();
+        rule_3();
+        rule_4();
+        rule_12();
         return "over";
     }
 
