@@ -27,18 +27,33 @@ public class CsvUtil {
             //构建缓存字符输出流（不推荐使用OutputStreamWriter）
 //            buffWriter = new BufferedWriter(writer, 1024);
 //            buffWriter = new BufferedWriter(new OutputStreamWriter (new FileOutputStream (filePath,addFlag),"UTF-8"));;
-//            buffWriter = new BufferedWriter(new OutputStreamWriter (new FileOutputStream (filePath,addFlag),"UTF-8"));
+            buffWriter = new BufferedWriter(new OutputStreamWriter (new FileOutputStream (filePath,addFlag),"UTF-8"));
 
-            buffWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(csvFile), "utf-8"));
+//            buffWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(csvFile), "utf-8"));
             // 由于csv是UTF-8格式，用Excel打开就会乱码，所以加个BOM告诉Excel用UTF-8打开
             String csv = new String(new byte[] { (byte) 0xEF, (byte) 0xBB,(byte) 0xBF });
             buffWriter.write(csv);
             //头部不为空则写入头部，并且换行
             if (StringUtils.isNotBlank(headLabel)) {
-                buffWriter.write(headLabel);
-                buffWriter.newLine();
+                FileReader fileReader = null;
+                try {
+                    fileReader = new FileReader(csvFile);
+                    //构建缓存字符输入流
+                    BufferedReader buffReader = new BufferedReader(fileReader);
+                    String line = "";
+                    //根据合适的换行符来读取一行数据,赋值给line
+                    if ((line = buffReader.readLine()) == null) {
+                        //如果为空文件，则插入标题
+                        buffWriter.write(headLabel);
+                        buffWriter.newLine();
+                    }
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+
+
             }
-            //遍历list
+                //遍历list
             for (String rowStr : dataList) {
                 //如果数据不为空，则写入文件内容,并且换行
                 if (StringUtils.isNotBlank(rowStr)) {
@@ -116,8 +131,8 @@ public class CsvUtil {
         List<String> dataList = new ArrayList<>();
         dataList.add("JRSJ-001,2021-01-19,9999980070068446,李佳琪,100000,600000,1,4");
         dataList.add("JRSJ-001,2021-01-19,9999980070068446,李佳琪,100000,600000,1,4");
-        dataList.add("JRSJ-001,2021-01-19,9999980070068446,李佳琪,100000,600000,1,4");
-        CsvUtil.writeToCsv(headDataStr, dataList, csvfile, false);
+        dataList.add("JRSJ-001,2021-01-19,9999980070068446,李佳琪,100000,600000,1,9");
+        CsvUtil.writeToCsv(headDataStr, dataList, csvfile, true);
     }
 
 }
