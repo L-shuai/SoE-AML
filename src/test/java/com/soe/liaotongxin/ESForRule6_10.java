@@ -1,5 +1,5 @@
 package com.soe.liaotongxin;
-
+import java.sql.*;
 import com.soe.utils.CsvUtil;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Date;
 
 import static com.soe.utils.ESUtils.daysBetween;
 
@@ -316,7 +317,7 @@ public class ESForRule6_10 {
             TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
                             .subAggregation(AggregationBuilders.count("total_bank_name_count").field("part_bank_name"));
 
-            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(50000));
             searchSourceBuilder.aggregation(agg_self_acc_no);
             searchSourceBuilder.size(0);
             searchSourceBuilder.query(query);
@@ -346,7 +347,7 @@ public class ESForRule6_10 {
                 double nongye_money = 0;//农业银行交易金额
                 int xinyongshe_count = 0;//信用社银行交易次数
                 double xinyongshe_money = 0;//信用社银行交易金额
-                String r_date = (String) sourceAsMap.get("date");
+                String r_date = (String) sourceAsMap.get("date2");
 //                客户号
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
 //                客户名称
@@ -386,13 +387,103 @@ public class ESForRule6_10 {
                 }
                 if(youchu_count + nongye_count + xinyongshe_count >= len *0.5 && youchu_money + nongye_money +xinyongshe_money >= 500000){
                     String record = "JRSJ-008,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                    System.out.println(record);
                     list.add(record);
                 }
             }
         }
 
     }
+    @Test
+    public void rule_9_test() throws IOException, ParseException{
+        try {
+            List<String> list = new ArrayList<>();
+            String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+            long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
+            Calendar calendar = new GregorianCalendar();
+            calendar.setTime(sdf.parse(min_max[0]));
+            Calendar calendar2 = new GregorianCalendar();
+            Class.forName("com.mysql.jdbc.Driver");
+            String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
+            Connection conn = DriverManager.getConnection(url,"soe","soe");
+            Statement smt = conn.createStatement();
+            for (int i=0;i<daysBetween;i++) {
+                //构建boolQuery
+                calendar.add(calendar.DATE, 1);
+                //当前时间
+                String curDay = sdf.format(calendar.getTime());
+                //窗口起始时间
+                String bDate = sdf.format(calendar.getTime());
+                calendar2.setTime(sdf.parse(curDay));
+                //窗口截至时间
+                calendar2.add(calendar2.DATE, 2);
+                String eDate = sdf.format(calendar2.getTime());
+                //查出每个时间段内的所有用户（基于tb_cred_txn表）
+                String  acc_no_query = "select  Self_acc_no from  tb_cred_txn where Date between "
+                        +"'"+bDate+"'"+" and "+"'"+eDate +"'"+" group by Self_acc_no";
+                ResultSet res = smt.executeQuery(acc_no_query);
+                List<String> acc_no_list = new ArrayList<>();
+                while(res.next()) {
+                    String acc_no = res.getString("Self_acc_no");
+                    acc_no_list.add(acc_no);
+                }
+                res.close();
+                for(int j = 0; j<acc_no_list.size();j++){
+                    //按照题目描述做多表查询操作
+                    String union_query = "select tb_cred_txn.Cst_no as tct_cst_no, tb_cred_txn.Pos_owner as tct_pos_owner, tb_cred_txn.Date as tct_date ," +
+                            "tb_cred_txn.Rmb_amt as tct_rmb_amt from tb_cred_txn, tb_acc_txn,tb_cst_unit where " +
+                            "tb_cred_txn.Lend_flag = 11 and tb_cred_txn.Pos_owner is not null and " +
+                            "tb_cred_txn.Pos_owner = tb_acc_txn.Self_acc_name and  tb_acc_txn.Lend_flag = 11 " +
+                            "and tb_acc_txn.Part_acc_name = tb_cst_unit.Rep_name and tb_cred_txn.Self_acc_no ="+ "'"+acc_no_list.get(j)+"' " +
+                            "and tb_cred_txn.Date between "+"'"+bDate+"'"+" and "+"'"+eDate+"'";
+                    ResultSet union_res = smt.executeQuery(union_query);
+                    Date date_max = sdf.parse("19990101");
+                    String r_self_acc_name = "";
+                    Calendar calendar1 = new GregorianCalendar();
+                    String r_cst_no = "";
+                    boolean out_flag = false;
+                    while(union_res.next()) {
+                        if(out_flag == false){
+                            out_flag = true;
+                        }
+                        String r_date = union_res.getString("tct_date");
+                        String cst_no = union_res.getString("tct_cst_no");
+                        String acc_name = union_res.getString("tct_pos_owner");
+                        if(r_cst_no == ""){
+                            r_cst_no = cst_no;
+                        }
+                        if(r_self_acc_name == ""){
+                            r_self_acc_name = acc_name;
+                        }
+                        Date date_new = sdf.parse(r_date);
+                        if(date_max.compareTo(date_new)<0){
+                            calendar1.setTime(date_new);
+                        }
+                    }
+                    if(out_flag == true){
+                        calendar1.add(calendar1.DATE, 1);
+                        String record = "JRSJ-009,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
+                        System.out.println(record);
+                        list.add(record);
+                    }
+                    union_res.close();
+                }
+            }
+
+
+
+            // 关闭流 (先开后关)
+            smt.close();
+            conn.close();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
     @Test
     public void rule_10_test() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
@@ -471,6 +562,7 @@ public class ESForRule6_10 {
                     }
                 }
                 String record = "JRSJ-010,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                System.out.println(record);
                 list.add(record);
             }
         }
