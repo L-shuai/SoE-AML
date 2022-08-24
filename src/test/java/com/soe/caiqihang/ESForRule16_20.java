@@ -111,6 +111,12 @@ public class ESForRule16_20 {
         return age;
     }
 
+    @Test
+    public void age_test() throws ParseException {
+        int age = age("20210101","19500101");
+        System.out.println(age);
+    }
+
 
 
     /**
@@ -297,6 +303,7 @@ public class ESForRule16_20 {
         }
     }
 
+
     /**
      * 判断该double是否为整数 （小数部分是否为0）
      */
@@ -326,8 +333,8 @@ public class ESForRule16_20 {
      */
     @Test
     public void rule_17_test() throws ParseException, IOException {
-        //获取最大和最小日期范围,只取具有代理关系的
-        String[] min_max = get_Min_Max("tb_acc","open_time",QueryBuilders.boolQuery().must(QueryBuilders.termQuery("open_type1","11")));
+        //获取最大和最小日期范围
+        String[] min_max = get_Min_Max("tb_acc","open_time",QueryBuilders.termQuery("open_type1","11"));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
@@ -337,6 +344,10 @@ public class ESForRule16_20 {
         Calendar calendar2 = new GregorianCalendar();
 
         SearchRequest searchRequest = new SearchRequest("tb_acc");
+        boolean flag = false;
+//        3天的窗口可能含有重复结果
+//        key:代理人身份证号    value:预警日期
+        HashMap<String, String> result = new HashMap<String, String>();
 
         for(int i = 0; i < daysBetween; i++){
 
@@ -356,23 +367,26 @@ public class ESForRule16_20 {
             //3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("open_time").format("yyyyMMdd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
+            //只取具有代理关系的
+            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("open_type1","11");
+            ((BoolQueryBuilder) query).filter(queryBuilder2);
 
-            //按代理人分桶
-            TermsAggregationBuilder agg_agent_no = AggregationBuilders.terms("agg_agent_no").field("agent_no");
+            //按账号分桶
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
 
-            agg_agent_no.subAggregation(AggregationBuilders.topHits("topHits").size(100));
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
             sourceBuilder.query(query);
-            sourceBuilder.aggregation(agg_agent_no);
+            sourceBuilder.aggregation(agg_self_acc_no);
             sourceBuilder.size(0);
 
             searchRequest.source(sourceBuilder);
-            System.out.println("查询条件："+sourceBuilder.toString());
+            //System.out.println("查询条件："+sourceBuilder.toString());
             SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-            System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+            //System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
 
             //处理聚合结果
             Aggregations aggregations = searchResponse.getAggregations();
-            ParsedStringTerms parsedStringTerms = aggregations.get("agg_agent_no");
+            ParsedStringTerms parsedStringTerms = aggregations.get("agg_self_acc_no");
             //获取分组后的所有bucket
             List<? extends Terms.Bucket> buckets = parsedStringTerms.getBuckets();
             for (Terms.Bucket bucket : buckets) {
@@ -380,17 +394,63 @@ public class ESForRule16_20 {
                 Aggregations bucketAggregations = bucket.getAggregations();
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
                 int len = topHits.getHits().getHits().length;
-                //问题：  这里我不会取到open_time和id_no两个字段的值
-                String open_time = bucketAggregations.get("open_time").toString();
-                String birthday = bucketAggregations.get("id_no").toString().substring(6,14);
-                int age = age(open_time,birthday);
-                if(age<18 || age>70){
-                    System.out.println(age);
+                //System.out.println("有"+len+"个文档");
+                Map<String ,Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_date = (String) sourceAsMap.get("open_time");//开户日期
+                String r_cst_no = (String) sourceAsMap.get("cst_no");//客户号
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");//账户户名
+
+                //存放agent_no的集合
+                Set<String> agent_set  = new HashSet<>();
+                //标识该主体是否符合筛选条件
+                boolean agent_no_rep = true;
+                Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[0].getSourceAsMap();
+                String agent_no = (String) sourceAsMap2.get("agent_no");
+                agent_set.add(agent_no);
+                if(len==1){
+                    //只有一条代理信息
+                    agent_no_rep = false;
+                }else {
+                    for(int j = 0;j < len;j++ ){
+                        Map<String, Object> sourceAsMap3 = topHits.getHits().getHits()[j].getSourceAsMap();
+                        String agent_no1 = (String) sourceAsMap3.get("agent_no");
+                        String open_time = (String) sourceAsMap3.get("open_time"); //开户日期
+                        String birthday = ((String) sourceAsMap3.get("id_no")).substring(6,14);  //出生日期
+                        int age = age(open_time,birthday);
+                        if(!(agent_set.contains(agent_no1))){
+                            //有多个agent_no,不符合条件
+                            agent_no_rep = false;
+                            break;
+                        }else {
+                            if(age>=18 && age<=70){
+                                //年龄正常，不符合条件
+                                agent_no_rep = false;
+                                break;
+                            }
+                        }
+                    }
                 }
-                for (int j = 0; j < len; j++) {
-                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
-                    // 打印出统计后的数据
-                    System.out.println(sourceAsMap);
+                if(agent_no_rep){
+                    boolean isNew = true;
+                    if(result.containsKey(r_cst_no)){
+                        String exist_date = result.get(r_cst_no);
+                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+//                        更新value
+                            result.put(r_cst_no,r_date);
+                        }else {
+                            isNew = false;
+                        }
+                    }else {
+                        result.put(r_cst_no,r_date);
+                    }
+                    if(isNew)
+                    {
+                        String record1 = "JRSJ-017,"+r_date+","+r_cst_no+","+r_self_acc_name;
+
+//                    list.add(record);
+                        System.out.println(record1);
+                    }
                 }
             }
         }
@@ -407,7 +467,7 @@ public class ESForRule16_20 {
     @Test
     public void rule_20_test() throws IOException, ParseException {
         //获取最大和最小日期范围
-        String[] min_max = get_Min_Max("tb_acc_txn","date2",null);
+        String[] min_max = get_Min_Max("tb_acc_txn","date2",QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("bord_flag","11")));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
