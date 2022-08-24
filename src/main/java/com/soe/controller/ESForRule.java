@@ -378,30 +378,30 @@ public class ESForRule {
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
                 ParsedCardinality count_self_acc_no = bucketAggregations.get("count_self_acc_no");
-                boolean isNew = true;
-                if (result.containsKey(r_agent_no)) {
-                    String exist_date = result.get(r_agent_no);
-//                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
-                    if (daysBetween(sdf.parse(r_date), sdf.parse(exist_date)) >= 3) {
-//                        更新value
-                        result.put(r_agent_no, r_date);
-                    } else {
-                        isNew = false;
-                    }
-                } else {
-                    result.put(r_agent_no, r_date);
-                }
-                if (isNew) {
+//                boolean isNew = true;
+//                if (result.containsKey(r_agent_no)) {
+//                    String exist_date = result.get(r_agent_no);
+////                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
+//                    if (daysBetween(sdf.parse(r_date), sdf.parse(exist_date)) >= 3) {
+////                        更新value
+//                        result.put(r_agent_no, r_date);
+//                    } else {
+//                        isNew = false;
+//                    }
+//                } else {
+//                    result.put(r_agent_no, r_date);
+//                }
+//                if (isNew) {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString();
                     //写入到csv文件，注意各列对其，用英文逗号隔开
                     //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
                     Calendar calendar3 = new GregorianCalendar();
-                    calendar3.setTime(sdf2.parse(r_date));
+                    calendar3.setTime(sdf2.parse(sdf2.format(sdf.parse(r_date))));
                     calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
                     String record = "JRSJ-002," + sdf2.format(calendar3.getTime()) + "," + r_cst_no + "," + r_self_acc_name + ",,,,";
                     list.add(record);
 //                    System.out.println(record);
-                }
+//                }
             }
 
             }
@@ -410,11 +410,24 @@ public class ESForRule {
         }
 
 //        }
+        list = removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
         System.out.println("rule_2 : end");
     return list;
     }
 
+    /**使用HashSet实现List去重(无序)
+     *
+     * @param list
+     * */
+    public static List removeDuplicationByHashSet(List<String> list) {
+        HashSet set = new HashSet(list);
+        //把List集合所有元素清空
+        list.clear();
+        //把HashSet对象添加至List集合
+        list.addAll(set);
+        return list;
+    }
 
     /**
      * "计算周期：每日（开户日期）
