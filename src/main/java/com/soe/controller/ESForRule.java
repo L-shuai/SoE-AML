@@ -1447,6 +1447,7 @@ public class ESForRule {
                     //单笔交易金额是10000的整数倍(前提条件是整数)
                     double rmb_amt = (Double) sourceAsMap2.get("rmb_amt");
                     if((rmb_amt % (int)rmb_amt == 0) && ((int) rmb_amt % 10000 ==0 )){
+                        r_date = (String) sourceAsMap.get("date2");
                         //根据Lend_flag判断 收 / 付
                         String lend_flag = (String) sourceAsMap2.get("lend_flag");
                         String part_acc_no = (String) sourceAsMap2.get("part_acc_no");
@@ -1476,27 +1477,30 @@ public class ESForRule {
                 }
                 //该主体的交易对手重复次数>=3
                 if(part_count_rep){
-                    boolean isNew = true;
-                    if(result.containsKey(r_cst_no)){
-                        String exist_date = result.get(r_cst_no);
-                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
-                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
-//                        更新value
-                            result.put(r_cst_no,r_date);
-                        }else {
-                            isNew = false;
-                        }
-                    }else {
-                        result.put(r_cst_no,r_date);
-                    }
-                    if(isNew)
-                    {
+//                    boolean isNew = true;
+//                    if(result.containsKey(r_cst_no)){
+//                        String exist_date = result.get(r_cst_no);
+//                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+//                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+////                        更新value
+//                            result.put(r_cst_no,r_date);
+//                        }else {
+//                            isNew = false;
+//                        }
+//                    }else {
+//                        result.put(r_cst_no,r_date);
+//                    }
+//                    if(isNew)
+//                    {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
-                        String record = "JRSJ-016,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                    Calendar calendar3 = new GregorianCalendar();
+                    calendar3.setTime(sdf.parse(r_date));
+                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                    String record = "JRSJ-016,"+sdf.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
 
                     list.add(record);
                         System.out.println(record);
-                    }
+//                    }
                 }
 
 
@@ -1505,6 +1509,7 @@ public class ESForRule {
 
 
         }
+        list = removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
         System.out.println("rule_16 : end");
         return list;
@@ -1523,12 +1528,12 @@ public class ESForRule {
 //        // 获取每个任务的返回结果
 //        String result = createOrder.get() + reduceAccount.get() + saveLog.get();
 //        return result;
-//        rule_1();
-//        rule_2();
-//        rule_3();
-//        rule_4();
-//        rule_6();
-//        rule_7();
+        rule_1();
+        rule_2();
+        rule_3();
+        rule_4();
+        rule_6();
+        rule_7();
         rule_8();
         rule_10();
         rule_12();
