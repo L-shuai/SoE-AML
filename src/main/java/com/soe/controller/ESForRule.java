@@ -369,34 +369,40 @@ public class ESForRule {
 
                 int len = topHits.getHits().getHits().length;
                 System.out.println(len);
-                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                //预警日期：为筛出数据里最大交易日期+1天，直接倒序扫描，第一次扫描到的就是最大日期
+                for (int j = len - 1; j >= 0; j--) {
+
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("open_time");
                 String r_agent_no = (String) sourceAsMap.get("agent_no");
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
-                ParsedCardinality count_self_acc_no =  bucketAggregations.get("count_self_acc_no");
+                ParsedCardinality count_self_acc_no = bucketAggregations.get("count_self_acc_no");
                 boolean isNew = true;
-                if(result.containsKey(r_agent_no)){
+                if (result.containsKey(r_agent_no)) {
                     String exist_date = result.get(r_agent_no);
 //                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
-                    if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+                    if (daysBetween(sdf.parse(r_date), sdf.parse(exist_date)) >= 3) {
 //                        更新value
-                        result.put(r_agent_no,r_date);
-                    }else {
+                        result.put(r_agent_no, r_date);
+                    } else {
                         isNew = false;
                     }
-                }else {
-                    result.put(r_agent_no,r_date);
+                } else {
+                    result.put(r_agent_no, r_date);
                 }
-                if(isNew)
-                {
+                if (isNew) {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString();
                     //写入到csv文件，注意各列对其，用英文逗号隔开
                     //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                    String record = "JRSJ-002,"+sdf2.format(sdf.parse(r_date))+","+r_cst_no+","+r_self_acc_name+",,,,";
+                    Calendar calendar3 = new GregorianCalendar();
+                    calendar3.setTime(sdf2.parse(r_date));
+                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                    String record = "JRSJ-002," + sdf2.format(calendar3.getTime()) + "," + r_cst_no + "," + r_self_acc_name + ",,,,";
                     list.add(record);
 //                    System.out.println(record);
                 }
+            }
 
             }
 //            restHighLevelClient.close();
