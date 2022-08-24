@@ -1622,7 +1622,140 @@ public class ESForRule {
 //        return list;
     }
 
-//    @SneakyThrows
+    /**
+     * 计算周期：三日（交易日期）
+     * 通过表tb_acc_txn中
+     * 字段：
+     * Nation：交易对方国家地区
+     * 计算三日Nation重复≥5的主体
+     * 进行条件过滤
+     */
+    @GetMapping("rule_20")
+    @Async
+    public void rule_20() throws IOException, ParseException {
+        List<String> list = new ArrayList<>();
+        //获取最大和最小日期范围
+        String[] min_max = get_Min_Max("tb_acc_txn","date2",QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("bord_flag","11")));
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+
+        Calendar calendar2 = new GregorianCalendar();
+
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+
+        boolean flag = false;
+//        3天的窗口可能含有重复结果
+//        key:代理人身份证号    value:预警日期
+        HashMap<String, String> result = new HashMap<String, String>();
+
+        for(int i = 0; i < daysBetween; i++){
+
+            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE,1);
+            //当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+            //窗口截止时间
+            calendar2.add(calendar2.DATE,2);
+            String eDate = sdf.format(calendar2.getTime());
+            //3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+            //bord_flag=11
+            QueryBuilder queryBuilder2 = QueryBuilders.boolQuery().must(QueryBuilders.termQuery("bord_flag","11"));
+            ((BoolQueryBuilder) query).filter(queryBuilder2);
+
+            //按账号分桶
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_name").field("self_acc_name");
+
+            agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
+            sourceBuilder.query(query);
+            sourceBuilder.aggregation(agg_self_acc_name);
+            sourceBuilder.size(0);
+
+            searchRequest.source(sourceBuilder);
+            //System.out.println("查询条件："+sourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            //System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+
+            //处理聚合结果
+            Aggregations aggregations = searchResponse.getAggregations();
+            ParsedTerms per_name = aggregations.get("agg_self_acc_name");
+            //获取分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = per_name.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                //解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+
+                int len = topHits.getHits().getHits().length;
+                //System.out.println(len);//一个桶里有多少文档
+                Map<String ,Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_date = (String) sourceAsMap.get("date2");//交易日期
+                String r_cst_no = (String) sourceAsMap.get("cst_no");//客户号
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");//账号
+
+                //统计各nation重复次数
+                HashMap<String, Integer> nation_count_map = new HashMap<String, Integer>();
+                //标识该主体的nation重复次数是否大于等于5
+                boolean nation_count_rep = false;
+                //统计nation重复次数
+                for (int j = 0; j < len; j++){
+                    Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    String nation = (String) sourceAsMap2.get("nation");
+                    if(nation_count_map.containsKey(nation)){
+                        //如果该nation已存在，重复次数+1
+                        int nation_count = nation_count_map.get(nation);
+                        nation_count++;
+                        nation_count_map.put(nation,nation_count);
+                        if(nation_count>=5){
+                            nation_count_rep=true;
+                            break;
+                        }
+                    }else {
+                        //如果该nation不存在，就存入，且重复次数为1
+                        nation_count_map.put(nation,1);
+                    }
+                }
+                //该主体nation重复次数>=5
+                if(nation_count_rep){
+                    boolean isNew = true;
+                    if(result.containsKey(r_cst_no)){
+                        String exist_date = result.get(r_cst_no);
+                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+//                        更新value
+                            result.put(r_cst_no,r_date);
+                        }else {
+                            isNew = false;
+                        }
+                    }else {
+                        result.put(r_cst_no,r_date);
+                    }
+                    if(isNew)
+                    {
+                        String record1 = "JRSJ-020,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
+
+                    list.add(record1);
+                        System.out.println(record1);
+                    }
+                }
+            }
+        }
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+    }
+
+
+    //    @SneakyThrows
     @Async
 //    @ApiOperation("异步 有返回值")
     @GetMapping("searchAll")

@@ -17,7 +17,7 @@ public class EsAccess {
     @Async
 //    @ApiOperation("异步 有返回值")
     @GetMapping("search")
-    public String searchAll() throws IOException, ParseException {
+    public void searchAll() throws IOException, ParseException {
 //        CompletableFuture<String> createOrder = asyncService.doSomething1("create order");
 //        CompletableFuture<String> reduceAccount = asyncService.doSomething2("reduce account");
 //        CompletableFuture<String> saveLog = asyncService.doSomething3("save log");
@@ -34,9 +34,11 @@ public class EsAccess {
         esForRule.rule_6();
         esForRule.rule_7();
         esForRule.rule_8();
+        esForRule.rule_9();
         esForRule.rule_10();
         esForRule.rule_12();
         esForRule.rule_16();
-        return "over";
+        esForRule.rule_20();
+
     }
 }
