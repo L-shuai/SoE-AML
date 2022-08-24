@@ -15,6 +15,7 @@ import org.elasticsearch.script.Script;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedTerms;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
@@ -1620,6 +1621,189 @@ public class ESForRule {
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
         System.out.println("rule_16 : end");
 //        return list;
+    }
+
+    //输入两个日期字符串，输出年龄 如：19991225-->22
+    public int age(String  now, String birth) throws ParseException {
+        Calendar cal = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        Date time1 = sdf.parse(now);
+        Date time2 = sdf.parse(birth);
+        int yearnow = time1.getYear();
+        int monthnow = time1.getMonth();
+        int yearbirth = time2.getYear();
+        int monthbirth = time2.getMonth();
+        int age = yearnow - yearbirth;
+        if(monthnow<monthbirth) age--;
+        return age;
+    }
+
+    /**
+     * 计算周期：三日（开户日期）
+     * 通过表tb_acc中
+     * 字段：
+     * Agent_name：代理人姓名
+     * Agent_no：代理人证件号
+     * Id_no：身份证件号码
+     * 计算三日Agent_name代理人姓名+Agent_no代理人证件号相同的主体
+     * 截取该主体证件号码的日期进行年龄的计算（年龄小于18或大于70）
+     * 进行条件过滤
+     */
+    @GetMapping("rule_17")
+    @Async
+    public void rule_17() throws ParseException, IOException {
+        List<String> list = new ArrayList<>();
+        //获取最大和最小日期范围
+        String[] min_max = get_Min_Max("tb_acc","open_time",QueryBuilders.termQuery("open_type1","11"));
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+
+        Calendar calendar2 = new GregorianCalendar();
+
+        SearchRequest searchRequest = new SearchRequest("tb_acc");
+        boolean flag = false;
+//        3天的窗口可能含有重复结果
+//        key:代理人身份证号    value:预警日期
+        HashMap<String, String> result = new HashMap<String, String>();
+
+        for(int i = 0; i < daysBetween; i++){
+
+            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE,1);
+            //当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+            //窗口截止时间
+            calendar2.add(calendar2.DATE,2);
+            String eDate = sdf.format(calendar2.getTime());
+            //3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("open_time").format("yyyyMMdd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+            //只取具有代理关系的
+            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("open_type1","11");
+            ((BoolQueryBuilder) query).filter(queryBuilder2);
+            //agent_no不为空
+            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("agent_no","@N");
+            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+
+            //按账号分桶
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
+
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
+            sourceBuilder.query(query);
+            sourceBuilder.aggregation(agg_self_acc_no);
+            sourceBuilder.size(0);
+
+            searchRequest.source(sourceBuilder);
+            //System.out.println("查询条件："+sourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            //System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+
+            //处理聚合结果
+            Aggregations aggregations = searchResponse.getAggregations();
+            ParsedStringTerms parsedStringTerms = aggregations.get("agg_self_acc_no");
+            //获取分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = parsedStringTerms.getBuckets();
+            Calendar calendar3 = new GregorianCalendar();
+            for (Terms.Bucket bucket : buckets) {
+                //解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+                int len = topHits.getHits().getHits().length;
+                //System.out.println("有"+len+"个文档");
+                Map<String ,Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_date = (String) sourceAsMap.get("open_time");//开户日期
+                String r_cst_no = (String) sourceAsMap.get("cst_no");//客户号
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");//账户户名
+
+                //存放agent_no的集合
+                Set<String> agent_set  = new HashSet<>();
+                //标识该主体是否符合筛选条件
+                boolean agent_no_rep = false;
+                Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[0].getSourceAsMap();
+                String agent_no = (String) sourceAsMap2.get("agent_no");
+//                if(agent_no.equals("@N")){
+//                    continue;
+//                }
+                agent_set.add(agent_no);
+                if(len==1){
+                    //只有一条代理信息时
+                    agent_no_rep = false;
+                }else {
+                    String max_date = "";
+                    for(int j = 0;j < len;j++ ){
+                        Map<String, Object> sourceAsMap3 = topHits.getHits().getHits()[j].getSourceAsMap();
+                        String agent_no1 = (String) sourceAsMap3.get("agent_no");
+                        String open_time = (String) sourceAsMap3.get("open_time"); //开户日期
+                        String birthday = ((String) sourceAsMap3.get("id_no")).substring(6,14);  //出生日期
+                        int age = age(open_time,birthday);
+
+                        if(age < 18 || age > 70){
+                            if(agent_set.contains(agent_no1)){
+                                //相同代理人
+                                max_date = open_time;
+                                agent_no_rep = true;
+                            }
+                            agent_set.add(agent_no1);
+                        }
+//                        if(!(agent_set.contains(agent_no1))){
+//                            //有多个agent_no,不符合条件
+//                            agent_no_rep = false;
+//                            break;
+//                        }else {
+//                            if(age>=18 && age<=70){
+//                                //年龄正常，不符合条件
+//                                agent_no_rep = false;
+//                                break;
+//                            }
+//                        }
+                    }
+                    if(agent_no_rep){
+                        calendar3.setTime(sdf.parse(max_date));
+                        calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                        String record1 = "JRSJ-017,"+sdf2.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
+
+                        list.add(record1);
+                        System.out.println(record1);
+                    }
+                }
+//                if(agent_no_rep){
+//                    boolean isNew = true;
+//                    if(result.containsKey(r_cst_no)){
+//                        String exist_date = result.get(r_cst_no);
+////                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+//                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+////                        更新value
+//                            result.put(r_cst_no,r_date);
+//                        }else {
+//                            isNew = false;
+//                        }
+//                    }else {
+//                        result.put(r_cst_no,r_date);
+//                    }
+//                    if(isNew)
+//                    {
+//                        String record1 = "JRSJ-017,"+r_date+","+r_cst_no+","+r_self_acc_name;
+//
+////                    list.add(record);
+//                        System.out.println(record1);
+//                    }
+//                }
+
+            }
+        }
+        list = removeDuplicationByHashSet(list);
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_17 : end");
     }
 
     /**

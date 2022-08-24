@@ -1,6 +1,7 @@
 package com.soe.caiqihang;
 
 
+import com.soe.utils.CsvUtil;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -333,9 +334,11 @@ public class ESForRule16_20 {
      */
     @Test
     public void rule_17_test() throws ParseException, IOException {
+        List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
         String[] min_max = get_Min_Max("tb_acc","open_time",QueryBuilders.termQuery("open_type1","11"));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
         Calendar calendar = new GregorianCalendar();
@@ -370,11 +373,14 @@ public class ESForRule16_20 {
             //只取具有代理关系的
             QueryBuilder queryBuilder2 = QueryBuilders.termQuery("open_type1","11");
             ((BoolQueryBuilder) query).filter(queryBuilder2);
+            //agent_no不为空
+            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("agent_no","@N");
+            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
 
             //按账号分桶
             TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
 
-            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             sourceBuilder.query(query);
             sourceBuilder.aggregation(agg_self_acc_no);
             sourceBuilder.size(0);
@@ -389,6 +395,7 @@ public class ESForRule16_20 {
             ParsedStringTerms parsedStringTerms = aggregations.get("agg_self_acc_no");
             //获取分组后的所有bucket
             List<? extends Terms.Bucket> buckets = parsedStringTerms.getBuckets();
+            Calendar calendar3 = new GregorianCalendar();
             for (Terms.Bucket bucket : buckets) {
                 //解析bucket
                 Aggregations bucketAggregations = bucket.getAggregations();
@@ -403,57 +410,82 @@ public class ESForRule16_20 {
                 //存放agent_no的集合
                 Set<String> agent_set  = new HashSet<>();
                 //标识该主体是否符合筛选条件
-                boolean agent_no_rep = true;
+                boolean agent_no_rep = false;
                 Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[0].getSourceAsMap();
                 String agent_no = (String) sourceAsMap2.get("agent_no");
+//                if(agent_no.equals("@N")){
+//                    continue;
+//                }
                 agent_set.add(agent_no);
                 if(len==1){
                     //只有一条代理信息时
                     agent_no_rep = false;
                 }else {
+                    String max_date = "";
                     for(int j = 0;j < len;j++ ){
                         Map<String, Object> sourceAsMap3 = topHits.getHits().getHits()[j].getSourceAsMap();
                         String agent_no1 = (String) sourceAsMap3.get("agent_no");
                         String open_time = (String) sourceAsMap3.get("open_time"); //开户日期
                         String birthday = ((String) sourceAsMap3.get("id_no")).substring(6,14);  //出生日期
                         int age = age(open_time,birthday);
-                        if(!(agent_set.contains(agent_no1))){
-                            //有多个agent_no,不符合条件
-                            agent_no_rep = false;
-                            break;
-                        }else {
-                            if(age>=18 && age<=70){
-                                //年龄正常，不符合条件
-                                agent_no_rep = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if(agent_no_rep){
-                    boolean isNew = true;
-                    if(result.containsKey(r_cst_no)){
-                        String exist_date = result.get(r_cst_no);
-                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
-                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
-//                        更新value
-                            result.put(r_cst_no,r_date);
-                        }else {
-                            isNew = false;
-                        }
-                    }else {
-                        result.put(r_cst_no,r_date);
-                    }
-                    if(isNew)
-                    {
-                        String record1 = "JRSJ-017,"+r_date+","+r_cst_no+","+r_self_acc_name;
 
-//                    list.add(record);
+                        if(age < 18 || age > 70){
+                            if(agent_set.contains(agent_no1)){
+                                //相同代理人
+                                max_date = open_time;
+                                agent_no_rep = true;
+                            }
+                            agent_set.add(agent_no1);
+                        }
+//                        if(!(agent_set.contains(agent_no1))){
+//                            //有多个agent_no,不符合条件
+//                            agent_no_rep = false;
+//                            break;
+//                        }else {
+//                            if(age>=18 && age<=70){
+//                                //年龄正常，不符合条件
+//                                agent_no_rep = false;
+//                                break;
+//                            }
+//                        }
+                    }
+                    if(agent_no_rep){
+                        calendar3.setTime(sdf.parse(max_date));
+                        calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                        String record1 = "JRSJ-017,"+sdf2.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
+
+                        list.add(record1);
                         System.out.println(record1);
                     }
                 }
+//                if(agent_no_rep){
+//                    boolean isNew = true;
+//                    if(result.containsKey(r_cst_no)){
+//                        String exist_date = result.get(r_cst_no);
+////                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+//                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+////                        更新value
+//                            result.put(r_cst_no,r_date);
+//                        }else {
+//                            isNew = false;
+//                        }
+//                    }else {
+//                        result.put(r_cst_no,r_date);
+//                    }
+//                    if(isNew)
+//                    {
+//                        String record1 = "JRSJ-017,"+r_date+","+r_cst_no+","+r_self_acc_name;
+//
+////                    list.add(record);
+//                        System.out.println(record1);
+//                    }
+//                }
+
             }
         }
+//        list = removeDuplicationByHashSet(list);
+//        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_17 : end");
     }
 
     /**
