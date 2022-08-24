@@ -408,7 +408,7 @@ public class ESForRule16_20 {
                 String agent_no = (String) sourceAsMap2.get("agent_no");
                 agent_set.add(agent_no);
                 if(len==1){
-                    //只有一条代理信息
+                    //只有一条代理信息时
                     agent_no_rep = false;
                 }else {
                     for(int j = 0;j < len;j++ ){
