@@ -407,7 +407,7 @@ public class ESForRule16_20 {
     @Test
     public void rule_20_test() throws IOException, ParseException {
         //获取最大和最小日期范围
-        String[] min_max = get_Min_Max("tb_acc_txn","date2",null);
+        String[] min_max = get_Min_Max("tb_acc_txn","date2",QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("bord_flag","11")));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
