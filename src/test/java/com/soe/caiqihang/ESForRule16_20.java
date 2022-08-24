@@ -111,98 +111,6 @@ public class ESForRule16_20 {
         return age;
     }
 
-    /**
-     * 计算周期：三日（交易日期）
-     * 通过表tb_acc_txn中
-     * 字段：
-     * Org_amt：原币种交易金额
-     * Part_acc_no：交易对手卡号
-     * 计算三日交易金额≥10000且交易金额是10000的整数倍的整万的主体
-     * 计算该主体交易对手卡号重复≥3次
-     * 进行条件过滤
-     */
-    //问题：规则16和规则20都是需要处理子桶内数量
-    //子桶的聚合好像传不到BucketSelectorPipelineAggregationBuilder里面
-    @Test
-    public void rule_16_test_old() throws ParseException, IOException {
-        //获取最大和最小日期范围
-        String[] min_max = get_Min_Max("tb_acc_txn","date2",null);
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
-
-        Calendar calendar = new GregorianCalendar();
-        calendar.setTime(sdf.parse(min_max[0]));
-
-        Calendar calendar2 = new GregorianCalendar();
-
-        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
-
-        for(int i = 0; i < daysBetween; i++){
-
-            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-
-            //构建boolQuery
-            QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
-            //当前时间
-            String curDay = sdf.format(calendar.getTime());
-            //窗口起始时间
-            String bDate = sdf.format(calendar.getTime());
-            calendar2.setTime(sdf.parse(curDay));
-            //窗口截止时间
-            calendar2.add(calendar2.DATE,2);
-            String eDate = sdf.format(calendar2.getTime());
-            //3天为窗口
-            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
-            ((BoolQueryBuilder) query).filter(queryBuilder1);
-            //按账户分桶
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"))
-                    .subAggregation(AggregationBuilders.terms("agg_part_acc_no").field("part_acc_no"));
-
-            Map<String, String> bucketsPath = new HashMap<>();
-            bucketsPath.put("sum_org_amt","sum_org_amt");
-            bucketsPath.put("count","_count");
-            //三日交易金额≥10000 且 交易金额是10000的整数倍的整万
-            Script script = new Script("params.sum_org_amt >= 10000 && params.sum_org_amt %10000 == 0 && params.count >= 3");
-            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
-            agg_self_acc_no.subAggregation(bs);
-            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(100));
-            sourceBuilder.query(query);
-            sourceBuilder.aggregation(agg_self_acc_no);
-            sourceBuilder.size(0);
-
-            searchRequest.source(sourceBuilder);
-            System.out.println("查询条件："+sourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-            System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
-
-            //处理聚合结果
-            Aggregations aggregations = searchResponse.getAggregations();
-            ParsedStringTerms parsedStringTerms = aggregations.get("agg_self_acc_no");
-            //获取分组后的所有bucket
-            List<? extends Terms.Bucket> buckets = parsedStringTerms.getBuckets();
-            for (Terms.Bucket bucket : buckets) {
-                //解析bucket
-                Aggregations bucketAggregations = bucket.getAggregations();
-                ParsedStringTerms parsedStringTerms1 = aggregations.get("agg_part_acc_no");
-                ParsedTopHits topHits = bucketAggregations.get("topHits");
-                SearchHit[] hits = searchResponse.getHits().getHits();
-                int len = topHits.getHits().getHits().length;
-                //System.out.println(len);
-                List<? extends Terms.Bucket> buckets1 = parsedStringTerms1.getBuckets();
-                for (Terms.Bucket bucket1 : buckets1) {
-                    System.out.println(bucket1.getDocCount());
-                    for (int j = 0; j < len; j++) {
-                        Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
-                        // 打印出统计后的数据
-                        System.out.println(sourceAsMap);
-
-                    }
-                }
-            }
-        }
-    }
 
 
     /**
@@ -510,7 +418,13 @@ public class ESForRule16_20 {
 
         SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
 
+        boolean flag = false;
+//        3天的窗口可能含有重复结果
+//        key:代理人身份证号    value:预警日期
+        HashMap<String, String> result = new HashMap<String, String>();
+
         for(int i = 0; i < daysBetween; i++){
+
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
 
             //构建boolQuery
@@ -527,46 +441,84 @@ public class ESForRule16_20 {
             //3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
-            //bord_flag=11,观察后发现nation有值的数据，bord_flag不一定是11，也有可能是12
-            //QueryBuilder queryBuilder2 = QueryBuilders.boolQuery().must(QueryBuilders.termQuery("bord_flag","11"));
-            //((BoolQueryBuilder) query).filter(queryBuilder2);
-            //按客户号分桶
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-                    .subAggregation(AggregationBuilders.terms("agg_nation").field("nation"));
+            //bord_flag=11
+            QueryBuilder queryBuilder2 = QueryBuilders.boolQuery().must(QueryBuilders.termQuery("bord_flag","11"));
+            ((BoolQueryBuilder) query).filter(queryBuilder2);
 
-            Map<String, String> bucketsPath = new HashMap<>();
-            bucketsPath.put("count","_count");
-            //三日Nation交易对方国家地区重复≥5的主体
-            Script script = new Script("params.count>=5");
-            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
-            agg_self_acc_no.subAggregation(bs);
-            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(100));
+            //按账号分桶
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_name").field("self_acc_name");
+
+            agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             sourceBuilder.query(query);
-            sourceBuilder.aggregation(agg_self_acc_no);
+            sourceBuilder.aggregation(agg_self_acc_name);
             sourceBuilder.size(0);
+
             searchRequest.source(sourceBuilder);
-            System.out.println("查询条件："+sourceBuilder.toString());
+            //System.out.println("查询条件："+sourceBuilder.toString());
             SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-            System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+            //System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+
             //处理聚合结果
             Aggregations aggregations = searchResponse.getAggregations();
-            ParsedTerms per_name = aggregations.get("agg_self_acc_no");
+            ParsedTerms per_name = aggregations.get("agg_self_acc_name");
             //获取分组后的所有bucket
             List<? extends Terms.Bucket> buckets = per_name.getBuckets();
             for (Terms.Bucket bucket : buckets) {
                 //解析bucket
                 Aggregations bucketAggregations = bucket.getAggregations();
 
-                ParsedTerms per_nation = aggregations.get("agg_nation");
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
+
                 int len = topHits.getHits().getHits().length;
-                List<? extends Terms.Bucket> buckets1 = per_nation.getBuckets();
-                for (Terms.Bucket bucket1 : buckets1) {
-                    System.out.println(bucket1.getKey()+" "+bucket1.getDocCount());
-                    for (int j = 0; j < len; j++) {
-                        Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
-                        // 打印出统计后的数据
-                        System.out.println(sourceAsMap);
+                //System.out.println(len);//一个桶里有多少文档
+                Map<String ,Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_date = (String) sourceAsMap.get("date2");//交易日期
+                String r_cst_no = (String) sourceAsMap.get("cst_no");//客户号
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");//账号
+
+                //统计各nation重复次数
+                HashMap<String, Integer> nation_count_map = new HashMap<String, Integer>();
+                //标识该主体的nation重复次数是否大于等于5
+                boolean nation_count_rep = false;
+                //统计nation重复次数
+                for (int j = 0; j < len; j++){
+                    Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    String nation = (String) sourceAsMap2.get("nation");
+                    if(nation_count_map.containsKey(nation)){
+                        //如果该nation已存在，重复次数+1
+                        int nation_count = nation_count_map.get(nation);
+                        nation_count++;
+                        nation_count_map.put(nation,nation_count);
+                        if(nation_count>=5){
+                            nation_count_rep=true;
+                            break;
+                        }
+                    }else {
+                        //如果该nation不存在，就存入，且重复次数为1
+                        nation_count_map.put(nation,1);
+                    }
+                }
+                //该主体nation重复次数>=5
+                if(nation_count_rep){
+                    boolean isNew = true;
+                    if(result.containsKey(r_cst_no)){
+                        String exist_date = result.get(r_cst_no);
+                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+//                        更新value
+                            result.put(r_cst_no,r_date);
+                        }else {
+                            isNew = false;
+                        }
+                    }else {
+                        result.put(r_cst_no,r_date);
+                    }
+                    if(isNew)
+                    {
+                        String record1 = "JRSJ-020,"+r_date+","+r_cst_no+","+r_self_acc_name;
+
+//                    list.add(record);
+                        System.out.println(record1);
                     }
                 }
             }
