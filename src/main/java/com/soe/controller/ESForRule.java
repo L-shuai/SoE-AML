@@ -1049,6 +1049,7 @@ public class ESForRule {
             List<String> list = new ArrayList<>();
             String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+            SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
             long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
             Calendar calendar = new GregorianCalendar();
@@ -1113,7 +1114,7 @@ public class ESForRule {
                     }
                     if(out_flag == true){
                         calendar1.add(calendar1.DATE, 1);
-                        String record = "JRSJ-009,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
+                        String record = "JRSJ-009,"+sdf2.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
                         System.out.println(record);
                         list.add(record);
                     }
@@ -1123,6 +1124,7 @@ public class ESForRule {
             // 关闭流 (先开后关)
             smt.close();
             conn.close();
+            list = removeDuplicationByHashSet(list);
             CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
             System.out.println("rule_9 : end");
             //return list;
