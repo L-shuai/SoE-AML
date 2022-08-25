@@ -11,6 +11,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
@@ -904,8 +905,15 @@ public class ESForRule {
     @GetMapping("rule_8")
     @Async
     public void rule_8() throws IOException, ParseException{
-//        List<String> list = new ArrayList<>();
-        String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+        List<String> list = new ArrayList<>();
+        BoolQueryBuilder qb = QueryBuilders.boolQuery();
+        WildcardQueryBuilder q1 = QueryBuilders.wildcardQuery("part_bank_name", "*邮*");
+        WildcardQueryBuilder q2 = QueryBuilders.wildcardQuery("part_bank_name", "*农业*");
+        WildcardQueryBuilder q3 = QueryBuilders.wildcardQuery("part_bank_name", "*信用社*");
+        qb.should(q1);
+        qb.should(q2);
+        qb.should(q3);
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",qb);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
@@ -916,10 +924,12 @@ public class ESForRule {
 
         SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
 
+        Calendar calendar3 = new GregorianCalendar();
         for (int i=0;i<daysBetween;i++) {
-            List<String> list = new ArrayList<>();
-
-
+            //        3天的窗口可能含有重复结果
+            HashMap<String, String> result = new HashMap<String, String>();
+            //该规则结果集去重  key:date+cst_no  value:主题信息和交易信息
+            Map<String, String> result_map = new HashMap<>();
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
             //构建boolQuery
@@ -935,11 +945,13 @@ public class ESForRule {
             String eDate = sdf.format(calendar2.getTime());
             //3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            System.out.println(bDate+"  "+eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
 
             //按照账户分桶
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-                    .subAggregation(AggregationBuilders.count("total_bank_name_count").field("part_bank_name"));
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no").size(50)
+                    .subAggregation(AggregationBuilders.count("total_bank_name_count").field("part_bank_name"))
+                    .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt")); //若该桶交易金额小于500000，则没必要再遍历了
 
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(50000));
             searchSourceBuilder.aggregation(agg_self_acc_no);
@@ -971,10 +983,15 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
 //                ValueCount  total_transaction = bucketAggregations.get("total_bank_name_count");
+                Sum sum_rmb_amt = bucketAggregations.get("sum_rmb_amt");
+                //若该桶交易金额小于500000，则没必要再遍历该桶了
+                if(sum_rmb_amt.getValue()<500000){
+                    continue;
+                }
 //                int total_transaction_count = (int) total_transaction.value();
 //                int len = total_transaction_count;
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 int youchu_count =0; //邮储银行交易次数
                 double youchu_money = 0;//邮储银行交易金额
                 int nongye_count = 0;//农业银行交易次数
@@ -982,9 +999,9 @@ public class ESForRule {
                 int xinyongshe_count = 0;//信用社银行交易次数
                 double xinyongshe_money = 0;//信用社银行交易金额
                 String r_date = (String) sourceAsMap.get("date2");
-    //                客户号
+//                客户号
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
-    //                客户名称
+//                客户名称
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
                 //收款总金额
                 double lend1_amt = 0;
@@ -1010,25 +1027,27 @@ public class ESForRule {
                     }
                     String lend_flag = (String) sourceAsMap1.get("lend_flag");
                     if(lend_flag.equals("10")){ //收
-                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+//                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend1_amt = lend1_amt + (Double)sourceAsMap1.get("rmb_amt") ;
                         lend1_count++;
                     }else if(lend_flag.equals("11")){//付
-                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+//                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend2_amt = lend2_amt + (Double)sourceAsMap1.get("rmb_amt") ;
                         lend2_count++;
                     }
                 }
                 if(youchu_count + nongye_count + xinyongshe_count >= len *0.5 && youchu_money + nongye_money +xinyongshe_money >= 500000){
+                    //预警日期取date+1天
+                    calendar3.setTime(sdf.parse(eDate));
+                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                    r_date = sdf.format(calendar3.getTime());
                     String record = "JRSJ-008,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                     list.add(record);
                 }
             }
-            CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-
         }
-//        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
         System.out.println("rule_8 : end");
-//        return null;
-
     }
     /**
      * 计算周期：三日（交易日期）
@@ -1522,7 +1541,7 @@ public class ESForRule {
                 }
                 if(out_flag == true){
                     calendar1.add(calendar1.DATE, 1);
-                    String record = "JRSJ-0015,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                    String record = "JRSJ-015,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                     System.out.println(record);
                     list.add(record);
                 }
