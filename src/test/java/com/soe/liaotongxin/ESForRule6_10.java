@@ -567,4 +567,222 @@ public class ESForRule6_10 {
             }
         }
     }
+    @Test
+    public void rule_11_test() throws IOException, ParseException {
+        List<String> list = new ArrayList<>();
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+
+        Calendar calendar2 = new GregorianCalendar();
+
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+
+        for (int i=0;i<daysBetween;i++) {
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+            //当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+            //窗口截至时间
+            calendar2.add(calendar2.DATE, 2);
+            String eDate = sdf.format(calendar2.getTime());
+            //3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+//            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("agent_name", "@N");
+//            ((BoolQueryBuilder) query).mustNot(queryBuilder2);
+            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("agent_no", "@N");
+            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
+                    .subAggregation(AggregationBuilders.count("count_part_acc_no").field("part_acc_no"));
+
+            agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            searchSourceBuilder.aggregation(agg_self_acc_no);
+            searchSourceBuilder.size(0);
+            searchSourceBuilder.query(query);
+            searchRequest.source(searchSourceBuilder);
+
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_self_acc_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                int len = topHits.getHits().getHits().length;
+                ValueCount total_transaction = bucketAggregations.get("count_part_acc_no");
+                String r_date = (String) sourceAsMap.get("date2");
+//                客户号
+                String r_cst_no = (String) sourceAsMap.get("cst_no");
+//                客户名称
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                //收款总金额
+                double lend1_amt = 0;
+                //收款交易笔数
+                int lend1_count =0 ;
+                //付款总金额
+                double lend2_amt = 0;
+                //付款交易笔数
+                int lend2_count = 0;
+                int total_transaction_count = (int) total_transaction.value();
+                Map<String,Integer> transaction_count_dict = new HashMap<>();
+                Map<String,Double> transaction_amt_dict = new HashMap<>();
+                int max_count = 0;
+                double max_amt = 0;
+                for(int j = 0; j<len;j++){
+                    Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    String transaction_agent_name = (String) sourceAsMap1.get("agent_name");
+                    String transaction_agent_no = (String) sourceAsMap1.get("agent_no");
+                    Double transaction_rmb_amt = (Double) sourceAsMap1.get("rmb_amt");
+                    String agent_info = transaction_agent_name+transaction_agent_no;
+                    if(transaction_agent_name != "@N"){
+                        if(transaction_count_dict.containsKey(agent_info) == false){
+                            transaction_count_dict.put(agent_info, 0);
+
+                        }else{
+                            int agent_count = transaction_count_dict.get(agent_info) + 1 ;
+                            if(agent_count  > max_count){
+                                max_count = agent_count;
+                            }
+                            transaction_count_dict.put(agent_info, agent_count);
+                        }
+                        if(transaction_amt_dict.containsKey(agent_info) == false){
+                            transaction_amt_dict.put(agent_info,transaction_rmb_amt);
+                        }else {
+                            Double rmb_amt = transaction_amt_dict.get(agent_info) + transaction_rmb_amt;
+                            if(rmb_amt > max_amt){
+                                max_amt = rmb_amt;
+                            }
+                            transaction_amt_dict.put(agent_info, rmb_amt);
+                        }
+                    }
+
+                    String lend_flag = (String) sourceAsMap1.get("lend_flag");
+                    if(lend_flag.equals("10")){ //收
+                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend1_count++;
+                    }else if(lend_flag.equals("11")){//付
+                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend2_count++;
+                    }
+                }
+                if(max_amt >= 500000 && max_count >= total_transaction_count * 0.6){
+                    String record = "JRSJ-011,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                    System.out.println(record);
+                    list.add(record);
+                }
+
+            }
+
+        }
+    }
+
+    @Test
+    public void rule_15_test() throws IOException, ParseException {
+        try{
+            Class.forName("com.mysql.jdbc.Driver");
+            String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
+            Connection conn = DriverManager.getConnection(url,"soe","soe");
+            List<String> list = new ArrayList<>();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Statement smt = conn.createStatement();
+            String  cst_no_query = "SELECT tb_acc_txn.Cst_no as tat_cst_no from tb_acc_txn JOIN tb_cst_pers " +
+                    " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
+                    "where  tb_cst_pers.Id_type = '110021' " +
+                    "and (tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
+                    "and tb_acc_txn.Org_amt<10 GROUP BY tb_acc_txn.Cst_no";
+            ResultSet res = smt.executeQuery(cst_no_query);
+            List<String> cst_no_list = new ArrayList<>();
+            while(res.next()) {
+                String acc_no = res.getString("tat_cst_no");
+                cst_no_list.add(acc_no);
+            }
+            res.close();
+            for(int j = 0; j<cst_no_list.size();j++) {
+                //按照题目描述做多表查询操作
+                String union_query = "SELECT tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Self_acc_name as tat_self_acc_name, " +
+                        "tb_acc_txn.Date as tat_date, tb_acc_txn.Lend_flag as tat_lend_flag from tb_acc_txn JOIN tb_cst_pers " +
+                        " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
+                        "where  tb_cst_pers.Id_type = '110021' " +
+                        "and (tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
+                        "and tb_acc_txn.Org_amt<10 and tb_acc_txn.Cst_no = "+ cst_no_list.get(j);
+                ResultSet union_res = smt.executeQuery(union_query);
+                Date date_max = sdf.parse("1999-01-01");
+                String r_self_acc_name = "";
+                Calendar calendar1 = new GregorianCalendar();
+                String r_cst_no = "";
+                boolean out_flag = false;
+                double lend1_amt = 0;
+                //收款交易笔数
+                int lend1_count =0 ;
+                //付款总金额
+                double lend2_amt = 0;
+                //付款交易笔数
+                int lend2_count = 0;
+                while(union_res.next()) {
+                    if (out_flag == false) {
+                        out_flag = true;
+                    }
+                    String r_date = union_res.getString("tat_date");
+                    String cst_no = union_res.getString("tat_cst_no");
+                    String acc_name = union_res.getString("tat_self_acc_name");
+                    String lend_flag = union_res.getString("tat_lend_flag");
+                    Double lend_amt = union_res.getDouble("tat_rmb_amt");
+                    if(lend_flag.equals("10")){
+                        lend1_count += 1;
+                        lend1_amt += lend_amt;
+                    }
+                    if(lend_flag.equals("11")){
+                        lend2_count += 1;
+                        lend2_amt += lend_amt;
+                    }
+                    if(r_cst_no == ""){
+                        r_cst_no = cst_no;
+                    }
+                    if(r_self_acc_name == ""){
+                        r_self_acc_name = acc_name;
+                    }
+                    Date date_new = sdf.parse(r_date);
+                    if(date_max.compareTo(date_new)<0){
+                        calendar1.setTime(date_new);
+                    }
+
+                }
+                if(out_flag == true){
+                    calendar1.add(calendar1.DATE, 1);
+                    String record = "JRSJ-0015,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                    System.out.println(record);
+                    list.add(record);
+                }
+                union_res.close();
+
+            }
+            smt.close();
+            conn.close();
+        } catch (ClassNotFoundException e) {
+        throw new RuntimeException(e);
+        } catch (SQLException e) {
+        throw new RuntimeException(e);
+        }
+    }
 }
+
+

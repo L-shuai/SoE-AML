@@ -1438,6 +1438,109 @@ public class ESForRule {
 //        return list;
     }
 
+    /**
+     * 计算周期：无（交易日期）
+     * 通过表tb_cst_unit中
+     * 字段：
+     * Id_type2：法人证件类型
+     * Id_no2：法人证件号码
+     * 截取Id_type2法人证件类型=110001、110003的Id_no2法人证件号码的出生日期计算年龄<20岁的主体
+     * 计算该主体交易金额>1元
+     * 进行条件过滤
+     */
+    @GetMapping("rule_15")
+    @Async
+    public void rule_15() throws ParseException, IOException {
+        try{
+            Class.forName("com.mysql.jdbc.Driver");
+            String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
+            Connection conn = DriverManager.getConnection(url,"soe","soe");
+            List<String> list = new ArrayList<>();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Statement smt = conn.createStatement();
+            String  cst_no_query = "SELECT tb_acc_txn.Cst_no as tat_cst_no from tb_acc_txn JOIN tb_cst_pers " +
+                    " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
+                    "where  tb_cst_pers.Id_type = '110021' " +
+                    "and (tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
+                    "and tb_acc_txn.Org_amt<10 GROUP BY tb_acc_txn.Cst_no";
+            ResultSet res = smt.executeQuery(cst_no_query);
+            List<String> cst_no_list = new ArrayList<>();
+            while(res.next()) {
+                String acc_no = res.getString("tat_cst_no");
+                cst_no_list.add(acc_no);
+            }
+            res.close();
+            for(int j = 0; j<cst_no_list.size();j++) {
+                //按照题目描述做多表查询操作
+                String union_query = "SELECT tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Self_acc_name as tat_self_acc_name, " +
+                        "tb_acc_txn.Date as tat_date, tb_acc_txn.Lend_flag as tat_lend_flag from tb_acc_txn JOIN tb_cst_pers " +
+                        " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
+                        "where  tb_cst_pers.Id_type = '110021' " +
+                        "and (tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
+                        "and tb_acc_txn.Org_amt<10 and tb_acc_txn.Cst_no = "+ cst_no_list.get(j);
+                ResultSet union_res = smt.executeQuery(union_query);
+                Date date_max = sdf.parse("1999-01-01");
+                String r_self_acc_name = "";
+                Calendar calendar1 = new GregorianCalendar();
+                String r_cst_no = "";
+                boolean out_flag = false;
+                double lend1_amt = 0;
+                //收款交易笔数
+                int lend1_count =0 ;
+                //付款总金额
+                double lend2_amt = 0;
+                //付款交易笔数
+                int lend2_count = 0;
+                while(union_res.next()) {
+                    if (out_flag == false) {
+                        out_flag = true;
+                    }
+                    String r_date = union_res.getString("tat_date");
+                    String cst_no = union_res.getString("tat_cst_no");
+                    String acc_name = union_res.getString("tat_self_acc_name");
+                    String lend_flag = union_res.getString("tat_lend_flag");
+                    Double lend_amt = union_res.getDouble("tat_rmb_amt");
+                    if(lend_flag.equals("10")){
+                        lend1_count += 1;
+                        lend1_amt += lend_amt;
+                    }
+                    if(lend_flag.equals("11")){
+                        lend2_count += 1;
+                        lend2_amt += lend_amt;
+                    }
+                    if(r_cst_no == ""){
+                        r_cst_no = cst_no;
+                    }
+                    if(r_self_acc_name == ""){
+                        r_self_acc_name = acc_name;
+                    }
+                    Date date_new = sdf.parse(r_date);
+                    if(date_max.compareTo(date_new)<0){
+                        calendar1.setTime(date_new);
+                    }
+
+                }
+                if(out_flag == true){
+                    calendar1.add(calendar1.DATE, 1);
+                    String record = "JRSJ-0015,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                    System.out.println(record);
+                    list.add(record);
+                }
+                union_res.close();
+            }
+            // 关闭流 (先开后关)
+            smt.close();
+            conn.close();
+            list = removeDuplicationByHashSet(list);
+            CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+            System.out.println("rule_15 : end");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     /**
      * 计算周期：三日（交易日期）
@@ -1962,6 +2065,7 @@ public class ESForRule {
         rule_8();
         rule_10();
         rule_12();
+        rule_15();
         rule_16();
 //        return "over";
     }
