@@ -2,6 +2,7 @@ package com.soe.hanyike;
 
 import co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
 //import com.sun.java.browser.plugin2.DOM;
+import com.soe.utils.CsvUtil;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -413,8 +414,10 @@ class ESForRule11_15 {
     /**
      * 读取tb_cst_unit表中的客户号和注册资金
      */
-    @Test
-    public void get_reg_amt() throws IOException {
+//    @Test
+    public Map<String,Double> get_reg_amt() throws IOException {
+        //返回map, key:客户号   value：注册资金
+        Map<String,Double> result_map = new HashMap<>();
         SearchRequest searchRequest = new SearchRequest("tb_cst_unit");//指定搜索索引
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
         sourceBuilder.query(QueryBuilders.matchAllQuery()).fetchSource(new String[]{"cst_no","code"}, new String[]{});//查询cst_no和code字段，code错位，代表注册资金
@@ -429,8 +432,152 @@ class ESForRule11_15 {
         for(SearchHit hit:hits){
             Map<String, Object> sourceAsMap = hit.getSourceAsMap();
             String cst_no = (String) sourceAsMap.get("cst_no");
-            String reg_amt = (String) sourceAsMap.get("code");
-            System.out.println(cst_no+"  "+reg_amt);
+            Double reg_amt = Double.parseDouble((String) sourceAsMap.get("code"));
+            result_map.put(cst_no,reg_amt);
+//            System.out.println(cst_no+"  "+reg_amt);
         }
+        return result_map;
+    }
+
+    /**
+     * "计算周期：每日（交易日期）
+     * 通过表tb_acc_txn、tb_cst_unit中
+     * 字段：
+     * 表tb_acc_txn：Org_amt：原币种交易金额
+     * 表tb_cst_unit：Reg_amt：注册本金
+     * 日累计交易金额≥注册本金
+     * 日累计交易金额≥500000
+     * 进行条件过滤"
+     * @throws IOException
+     * @throws ParseException
+     */
+    @Test
+    public void rule_14() throws IOException, ParseException {
+        System.out.println("rule_14 : begin");
+
+        List<String> list = new ArrayList<>();
+        //仅 公司账户
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",QueryBuilders.termQuery("acc_type","12"));
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+        //获取客户对应的注册资金map
+        Map<String,Double> reg_amt_map = get_reg_amt();
+        for (int i=0;i<daysBetween;i++) {
+            SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+//        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+// 这个时间就是日期往后推一天的结果
+            String curDay = sdf.format(calendar.getTime());
+//            System.out.println(curDay);
+//        一天为窗口
+//            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(curDay).lte(curDay);
+            QueryBuilder queryBuilder1 = QueryBuilders.termQuery("date2",curDay);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+//        //公司账户
+            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("acc_type", "12");
+            ((BoolQueryBuilder) query).filter(queryBuilder2);
+
+
+
+            //嵌套子聚合查询  以self_acc_name账户名称分桶
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
+
+            Map<String, String> bucketsPath = new HashMap<>();
+            bucketsPath.put("sum_org_amt","sum_org_amt");
+            //累计交易金额大于500000
+            Script script = new Script("params.sum_org_amt >= 500000");
+//            Script script = new Script("params.count_self_bank_code>=3");
+            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
+            agg_self_acc_name.subAggregation(bs);
+
+            agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
+            searchSourceBuilder.aggregation(agg_self_acc_name);
+            searchSourceBuilder.size(0);
+
+
+            searchSourceBuilder.query(query);
+
+            searchRequest.source(searchSourceBuilder);
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_self_acc_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+
+                int len = topHits.getHits().getHits().length;
+                System.out.println(len);
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_date = (String) sourceAsMap.get("date2");
+//                折人民币交易金额-收
+                String r_lend1 = "0";
+//                折人民币交易金额-付
+                Sum r_lend2 = bucketAggregations.get("sum_rmb_amt");
+//                客户号
+                String r_cst_no = (String) sourceAsMap.get("cst_no");
+//                客户名称
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                //获取该客户的注册资金
+                Double reg_amt = 0.0;//初始为0
+                reg_amt = reg_amt_map.get(r_cst_no);
+
+                //总交易金额
+                Sum sum_org_amt =  bucketAggregations.get("sum_org_amt");
+                //若总交易金额不大于注册本金，则没必要遍历该桶
+                if(sum_org_amt.getValue() < reg_amt){
+                    continue;
+                }
+
+                //收款总金额
+                double lend1_amt = 0;
+                //收款交易笔数
+                int lend1_count =0 ;
+                //付款总金额
+                double lend2_amt = 0;
+                //付款交易笔数
+                int lend2_count = 0;
+
+                for (int j = 0; j < len; j++) {
+                    Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    //根据Lend_flag判断 收 / 付
+                    String lend_flag = (String) sourceAsMap2.get("lend_flag");
+                    if(lend_flag.equals("10")){ //收
+                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend1_count++;
+                    }else if(lend_flag.equals("11")){//付
+                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend2_count++;
+                    }
+
+                }
+                String record = "JRSJ-014,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                list.add(record);
+                System.out.println(record);
+                System.out.println("注册资金："+reg_amt);
+
+            }
+//            restHighLevelClient.close();
+
+        }
+
+//        }
+//        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_14 : end");
+//        return list;
     }
 }
