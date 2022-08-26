@@ -1,7 +1,7 @@
 package com.soe.hanyike;
 
 import co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
-import com.sun.java.browser.plugin2.DOM;
+//import com.sun.java.browser.plugin2.DOM;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -10,6 +10,7 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.script.Script;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
@@ -407,5 +408,29 @@ class ESForRule11_15 {
             }
         }
         //return list;
+    }
+
+    /**
+     * 读取tb_cst_unit表中的客户号和注册资金
+     */
+    @Test
+    public void get_reg_amt() throws IOException {
+        SearchRequest searchRequest = new SearchRequest("tb_cst_unit");//指定搜索索引
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
+        sourceBuilder.query(QueryBuilders.matchAllQuery()).fetchSource(new String[]{"cst_no","code"}, new String[]{});//查询cst_no和code字段，code错位，代表注册资金
+        sourceBuilder.size(100000);
+        searchRequest.source(sourceBuilder);//指定查询条件
+
+        //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+        //获取结果
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        for(SearchHit hit:hits){
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            String cst_no = (String) sourceAsMap.get("cst_no");
+            String reg_amt = (String) sourceAsMap.get("code");
+            System.out.println(cst_no+"  "+reg_amt);
+        }
     }
 }
