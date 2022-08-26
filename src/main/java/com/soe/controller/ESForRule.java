@@ -159,7 +159,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -301,7 +304,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 //            当前时间
             String curDay = sdf.format(calendar.getTime());
 //            窗口起始时间
@@ -473,7 +479,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -595,7 +604,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -893,7 +905,10 @@ public class ESForRule {
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             String curDay = sdf.format(calendar.getTime());
 
             BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
@@ -987,7 +1002,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -1107,7 +1125,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -1254,7 +1275,10 @@ public class ESForRule {
             Statement smt = conn.createStatement();
             for (int i=0;i<daysBetween;i++) {
                 //构建boolQuery
-                calendar.add(calendar.DATE, 1);
+                //第一次不加1
+                if(i>0){
+                    calendar.add(calendar.DATE, 1);
+                }
                 //当前时间
                 String curDay = sdf.format(calendar.getTime());
                 //窗口起始时间
@@ -1341,7 +1365,10 @@ public class ESForRule {
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             String curDay = sdf.format(calendar.getTime());
 
             BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
@@ -1527,7 +1554,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 //            当前时间
             String curDay = sdf.format(calendar.getTime());
 //            窗口起始时间
@@ -1691,7 +1721,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -2049,7 +2082,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -2248,7 +2284,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -2408,7 +2447,10 @@ public class ESForRule {
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -2559,7 +2601,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
