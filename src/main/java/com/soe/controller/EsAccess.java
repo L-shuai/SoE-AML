@@ -37,7 +37,9 @@ public class EsAccess {
         esForRule.rule_9();
         esForRule.rule_10();
         esForRule.rule_12();
+        esForRule.rule_15();
         esForRule.rule_16();
+        esForRule.rule_17();
         esForRule.rule_20();
 
     }
