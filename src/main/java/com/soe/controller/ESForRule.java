@@ -1441,6 +1441,157 @@ public class ESForRule {
 //        return list;
     }
 
+    /**
+     * "计算周期：三日（交易日期）
+     * 通过表tb_acc_txn中
+     * 字段：
+     * Agent_name:代理人姓名
+     * Agent_no：代理人证件号码
+     * 计算三日交易代理人为同一人的交易笔数（代理人姓名+证件号相同）
+     * 计算三日总交易笔数
+     * 三日交易代理人为同一人的交易笔数≥三日累计总交易笔数*60%
+     * 三日交易代理人为同一人的交易金额≥500000
+     * 进行条件过滤"
+     */
+    @GetMapping("rule_11")
+    @Async
+    public void rule_11() throws ParseException, IOException {
+        List<String> list = new ArrayList<>();
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]), sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+        Calendar calendar2 = new GregorianCalendar();
+
+        //boolean flag = false;
+        HashMap<String, String> result = new HashMap<String, String>();
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+
+        for (int i = 0; i < daysBetween; i++) {
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
+//            当前时间
+            String curDay = sdf.format(calendar.getTime());
+//            窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+//            窗口截至时间
+            calendar2.add(calendar2.DATE, 2);
+            String eDate = sdf.format(calendar2.getTime());
+//            窗口复原
+//            calendar2.setTime(sdf.parse(bDate));
+//            System.out.println(bDate+"  -  "+eDate);
+//        3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+            //agent_no不能为空
+            QueryBuilder queryBuilder3 = QueryBuilders.termQuery("agent_no", "@N");
+            ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+            //嵌套子聚合查询
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
+                    .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"));
+            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
+            searchSourceBuilder.aggregation(agg_cst_no);
+            searchSourceBuilder.size(0);
+            searchSourceBuilder.query(query);
+            searchRequest.source(searchSourceBuilder);
+            //System.out.println("查询条件：" + searchSourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            //System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
+            Aggregations aggregations = searchResponse.getAggregations();
+            ParsedTerms txn_per_day = aggregations.get("agg_acc_no");
+
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                ValueCount cst_num = bucketAggregations.get("count_acc_no");
+                int len = topHits.getHits().getHits().length;
+                //System.out.println(len);
+                String r_date = (String) sourceAsMap.get("date2");
+                String r_cst_no = (String) sourceAsMap.get("cst_no");
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                int cst_trade_num = 0;//同一个客户所有交易次数
+                Map<String, Integer> agent_trade_num = new HashMap();//同一个客户同一个代理交易次数
+                int agent_num = 0;
+                Map<String, Double> sum_money = new HashMap();//同一个代理交易金额
+                double sum = 0;
+                int lend1_count = 0;//付款次数
+                int lend2_count = 0;//收款次数
+                double lend1_amt = 0;//付款金额
+                double lend2_amt = 0;//收款金额
+                cst_trade_num += cst_num.value();
+                int max_trad_num = 0;
+                double max_sum = 0;
+                Date max_date = sdf.parse("1999-01-01");
+                for (int j = 0; j < len; j++) {
+                    Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    String M_agent_no = (String) sourceAsMap1.get("agent_no");
+                    String M_agent_name = (String) sourceAsMap1.get("agent_name");
+                    Double M_rmb_amt = (Double) sourceAsMap1.get("rmb_amt");
+                    String M_key = M_agent_no + M_agent_name;
+                    String trade_date = (String) sourceAsMap1.get("date2");
+                    if (M_agent_name != "@N") {
+                        if (agent_trade_num.containsKey(M_key)) {
+                            agent_num = agent_trade_num.get(M_key) + 1;
+                            agent_trade_num.put(M_key, agent_num);
+                            if (agent_num > max_trad_num) {
+                                max_trad_num = agent_num;
+                            }
+                        } else {
+                            agent_trade_num.put(M_key, 1);
+                        }
+                        if (sum_money.containsKey(M_key)) {
+                            sum = sum_money.get(M_key) + M_rmb_amt;
+                            sum_money.put(M_key, sum);
+                            if (sum > max_sum) {
+                                max_sum = sum;
+                            }
+                        } else {
+                            sum_money.put(M_key, M_rmb_amt);
+                        }
+
+                        String lend_flag = (String) sourceAsMap1.get("lend_flag");
+                        if (lend_flag.equals("10")) {
+                            lend1_amt += M_rmb_amt;
+                            lend1_count++;
+                        } else if (lend_flag.equals("11")) {
+                            lend2_amt += M_rmb_amt;
+                            lend2_count++;
+                        }
+                    }
+                    Date new_date = sdf.parse(trade_date);
+                    if(max_date.compareTo(new_date) < 0){
+                        max_date = new_date;
+                    }
+                }
+                if (max_trad_num >= cst_trade_num * 0.6 && max_sum >= 500000) {
+                    Calendar calendar3 = new GregorianCalendar();
+                    calendar3.setTime(max_date);
+                    calendar3.add(calendar3.DATE,1);
+                    String record = "JRSJ-011," + sdf.format(calendar3.getTime()) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f",lend1_amt) + "," +  String.format("%.2f",lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+                    System.out.println(record);
+                    list.add(record);
+                }
+
+            }
+
+        }
+        list = removeDuplicationByHashSet(list);
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_11 : end");
+        //return list;
+    }
 
 //    @GetMapping("/update_tb_acc_txt_Nation")
 //    public void update_tb_acc_txt_Nation() throws IOException {
