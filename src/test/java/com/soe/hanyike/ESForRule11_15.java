@@ -176,7 +176,7 @@ class ESForRule11_15 {
             //嵌套子聚合查询
             TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
                     .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"));
-            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
             searchSourceBuilder.aggregation(agg_cst_no);
             searchSourceBuilder.size(0);
             searchSourceBuilder.query(query);
@@ -321,7 +321,7 @@ class ESForRule11_15 {
 
             //窗口截至时间
             calendar2.setTime(sdf.parse(curDay));
-            calendar2.add(calendar2.DATE, 2);
+            calendar2.add(calendar2.DATE, 1);
             String eDate = sdf.format(calendar2.getTime());
             // break;
 //            窗口复原
@@ -345,7 +345,7 @@ class ESForRule11_15 {
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
             agg_cst_no.subAggregation(bs);
 
-            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
             searchSourceBuilder.aggregation(agg_cst_no);
             searchSourceBuilder.size(0);
 
@@ -368,12 +368,9 @@ class ESForRule11_15 {
                 int len = topHits.getHits().getHits().length;
                 //System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
-                String r_date = (String) sourceAsMap.get("date2");
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
 //                客户名称
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
-                //总交易笔数
-                ParsedValueCount count_self_acc_no = bucketAggregations.get("count_acc_no");
                 //收款总金额
                 double lend1_amt = 0;
                 //收款交易笔数
