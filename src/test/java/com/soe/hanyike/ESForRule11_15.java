@@ -155,7 +155,9 @@ class ESForRule11_15 {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 //            当前时间
             String curDay = sdf.format(calendar.getTime());
 //            窗口起始时间
@@ -176,7 +178,7 @@ class ESForRule11_15 {
             //嵌套子聚合查询
             TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
                     .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"));
-            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(1000));
+            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             searchSourceBuilder.aggregation(agg_cst_no);
             searchSourceBuilder.size(0);
             searchSourceBuilder.query(query);

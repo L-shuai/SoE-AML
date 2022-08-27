@@ -219,7 +219,7 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("date2");
 //                折人民币交易金额-收
@@ -380,7 +380,7 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 //预警日期：为筛出数据里最大交易日期+1天，直接倒序扫描，第一次扫描到的就是最大日期
                 for (int j = len - 1; j >= 0; j--) {
 
@@ -542,11 +542,11 @@ public class ESForRule {
 
                 int len = topHits.getHits().getHits().length;
 
-                System.out.println(len);
+//                System.out.println(len);
                 for (int j = 0; j < len; j++) {
                     Map<String, Object> sourceAsMap = topHits.getHits().getHits()[j].getSourceAsMap();
                     // 打印出统计后的数据
-                    System.out.println(sourceAsMap);
+//                    System.out.println(sourceAsMap);
 
 //                    Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                     String r_date = (String) sourceAsMap.get("open_time");
@@ -664,7 +664,7 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("date2");
 //                客户号
@@ -723,7 +723,7 @@ public class ESForRule {
 
         //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
         SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-        System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+//        System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
         //获取结果
         SearchHit[] hits = searchResponse.getHits().getHits();
         for(SearchHit hit:hits){
@@ -870,7 +870,7 @@ public class ESForRule {
             if(low_rate_transaction_count >= len*0.6 && low_rate_transaction_rmt>=500000){
                 String record = "JRSJ-005,"+sdf2.format(sdf.parse(r_date))+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                 list.add(record);
-                System.out.println(record);
+//                System.out.println(record);
             }
 
         }
@@ -949,7 +949,7 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 String r_date = (String) sourceAsMap.get("date2");
 //                折人民币交易金额-收
 //                Sum r_lend1 = bucketAggregations.get("sum_rmb_amt");
@@ -1332,7 +1332,7 @@ public class ESForRule {
                     if(out_flag == true){
                         calendar1.add(calendar1.DATE, 1);
                         String record = "JRSJ-009,"+sdf2.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
-                        System.out.println(record);
+//                        System.out.println(record);
                         list.add(record);
                     }
                     union_res.close();
@@ -1404,7 +1404,7 @@ public class ESForRule {
                 // 解析bucket
                 Aggregations bucketAggregations = bucket.getAggregations();
                 Sum sum = bucketAggregations.get("sum_rmb_amt");
-                System.out.println(sum.getValueAsString());
+//                System.out.println(sum.getValueAsString());
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 int len = topHits.getHits().getHits().length;
@@ -1617,7 +1617,7 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("date2");
                 String r_nation = (String) sourceAsMap.get("nation");
@@ -1645,7 +1645,7 @@ public class ESForRule {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
                     String record = "JRSJ-012,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
                     list.add(record);
-                    System.out.println(record);
+//                    System.out.println(record);
                 }
 
             }
@@ -1774,7 +1774,7 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("date2");
 //                折人民币交易金额-收
@@ -1820,8 +1820,8 @@ public class ESForRule {
                 }
                 String record = "JRSJ-014,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                 list.add(record);
-                System.out.println(record);
-                System.out.println("注册资金："+reg_amt);
+//                System.out.println(record);
+//                System.out.println("注册资金："+reg_amt);
 
             }
 //            restHighLevelClient.close();
@@ -1918,7 +1918,7 @@ public class ESForRule {
                     if(out_flag == true){
                         calendar1.add(calendar1.DATE, 1);
                         String record = "JRSJ-014,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
-                        System.out.println(record);
+//                        System.out.println(record);
                         list.add(record);
                     }
                     union_res.close();
@@ -2025,7 +2025,7 @@ public class ESForRule {
                 if(out_flag == true){
                     calendar1.add(calendar1.DATE, 1);
                     String record = "JRSJ-015,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
-                    System.out.println(record);
+//                    System.out.println(record);
                     list.add(record);
                 }
                 union_res.close();
@@ -2134,7 +2134,7 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
                 int len = topHits.getHits().getHits().length;
-                System.out.println(len);
+//                System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("date2");
 //                String r_nation = (String) sourceAsMap.get("nation");
@@ -2215,7 +2215,7 @@ public class ESForRule {
                     String record = "JRSJ-016,"+sdf.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
 
                     list.add(record);
-                        System.out.println(record);
+//                        System.out.println(record);
 //                    }
                 }
 
@@ -2384,7 +2384,7 @@ public class ESForRule {
                         String record1 = "JRSJ-017,"+sdf2.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
 
                         list.add(record1);
-                        System.out.println(record1);
+//                        System.out.println(record1);
                     }
                 }
 //                if(agent_no_rep){
@@ -2554,7 +2554,7 @@ public class ESForRule {
                 calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
                 String record1 = "JRSJ-018,"+sdf2.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+ "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
                 list.add(record1);
-                System.out.println(record1);
+//                System.out.println(record1);
 //                }
 
             }
@@ -2693,7 +2693,7 @@ public class ESForRule {
                         String record1 = "JRSJ-020,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
 
                     list.add(record1);
-                        System.out.println(record1);
+//                        System.out.println(record1);
                     }
                 }
             }
