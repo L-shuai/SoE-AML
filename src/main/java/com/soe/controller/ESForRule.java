@@ -14,6 +14,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
@@ -158,7 +159,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -300,7 +304,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 //            当前时间
             String curDay = sdf.format(calendar.getTime());
 //            窗口起始时间
@@ -472,7 +479,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -594,7 +604,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -698,6 +711,177 @@ public class ESForRule {
         System.out.println("rule_4 : end");
 //        return list;
     }
+
+    public List<String> get_low_rate_cst() throws IOException {
+        //返回list
+        List<String> list = new ArrayList<>();
+        SearchRequest searchRequest = new SearchRequest("tb_low_rate_cst");//指定搜索索引
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
+        sourceBuilder.query(QueryBuilders.matchAllQuery());
+        sourceBuilder.size(10000);
+        searchRequest.source(sourceBuilder);//指定查询条件
+
+        //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+        //获取结果
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        for(SearchHit hit:hits){
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            String cst_no = (String) sourceAsMap.get("cst_id");
+//            System.out.println(cst_no);
+            list.add(cst_no);
+        }
+        return list;
+    }
+
+
+    /**
+     * "计算周期：三日（交易日期）
+     * 通过表tb_cred_txn中
+     * 低费率商户清单
+     * 计算三日累计总交易笔数
+     * 计算三日累计低费率商户信用卡交易笔数
+     * 三日累计低费率商户信用卡交易笔数≥三日累计总交易笔数*60%
+     * 三日累计低费率商户信用卡交易金额≥500000
+     * 进行条件过滤"
+     * @throws IOException
+     * @throws ParseException
+     */
+    @GetMapping("rule_5")
+    @Async
+    public void rule_5() throws IOException, ParseException {
+        List<String> list = new ArrayList<>();
+        String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        //输出的csv的时间格式化
+        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+
+        Calendar calendar2 = new GregorianCalendar();
+
+        SearchRequest searchRequest = new SearchRequest("tb_cred_txn");
+        //读取低费率商户cst_no
+        List<String> low_rate_cst_no_list = get_low_rate_cst();
+
+        for (int i=0;i<daysBetween;i++) {
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
+            //当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+            //窗口截至时间
+            calendar2.add(calendar2.DATE, 2);
+            String eDate = sdf.format(calendar2.getTime());
+            //3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date").format("yyyyMMdd").gte(bDate).lte(eDate);
+//            System.out.println(bDate+"  "+eDate);
+            ((BoolQueryBuilder) query).must(queryBuilder1);
+
+            searchSourceBuilder.query(query);
+            searchSourceBuilder.size(10000);
+
+            searchRequest.source(searchSourceBuilder);
+            //            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
+
+
+            //获取命中对象hits
+            SearchHits hits = searchResponse.getHits();
+            //获取总记录数  ,即该组的总交易笔数
+            long len = hits.getTotalHits().value;
+//            System.out.println("总记录数："+len);
+
+            //获取hits数组
+            SearchHit[] hits1 = hits.getHits();
+            //低费率交易次数
+            int low_rate_transaction_count = 0;
+            //低费率交易总金额
+            double low_rate_transaction_rmt = 0;
+            //收款总金额
+            double lend1_amt = 0;
+            //收款交易笔数
+            int lend1_count =0 ;
+            //付款总金额
+            double lend2_amt = 0;
+            //付款交易笔数
+            int lend2_count = 0;
+
+            //交易时间
+            String r_date = "";
+            //客户号
+            String r_cst_no ="";
+            //客户名称
+            String r_self_acc_name ="";
+
+            for (SearchHit hit : hits1) {
+                Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+
+                r_date = (String) sourceAsMap.get("date");
+                //                客户号
+                r_cst_no = (String) sourceAsMap.get("cst_no");
+                //                客户名称
+                r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+
+                //本次交易金额
+                double amt = 0.0;
+                if(!(sourceAsMap.get("org_amt").toString()).equals("0")){
+                    amt = (Double) sourceAsMap.get("org_amt");
+                }
+//                if(sourceAsMap.get("rmb_amt").equals("0")){
+//                    System.out.println(0);
+//                }
+
+//                Double rmt = Double.parseDouble((String) sourceAsMap.get("rmb_amt"));
+
+//                Double org_amt = (Double.parseDouble(sourceAsMap.get("org_amt").toString()));
+                if(low_rate_cst_no_list.contains(r_cst_no)){
+//                    System.out.println(r_cst_no);
+                    low_rate_transaction_rmt+=amt;
+                    low_rate_transaction_count++;
+                }
+
+
+                String lend_flag = (String) sourceAsMap.get("lend_flag");
+                if(lend_flag.equals("10")){ //收
+                    lend1_amt = lend1_amt + amt ;
+                    lend1_count++;
+                }else if(lend_flag.equals("11")){//付
+                    lend2_amt = lend2_amt + amt ;
+                    lend2_count++;
+                }
+            }
+
+            //三日累计低费率商户信用卡交易笔数≥三日累计总交易笔数*60%
+            //三日累计低费率商户信用卡交易金额≥500000
+            if(low_rate_transaction_count >= len*0.6 && low_rate_transaction_rmt>=500000){
+                String record = "JRSJ-005,"+sdf2.format(sdf.parse(r_date))+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                list.add(record);
+                System.out.println(record);
+            }
+
+        }
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+
+        System.out.println("rule_5 : end");
+//        return list;
+    }
+
+
+
     /**
      * "计算周期：每日
      * 通过表tb_acc_txn中
@@ -721,7 +905,10 @@ public class ESForRule {
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             String curDay = sdf.format(calendar.getTime());
 
             BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
@@ -815,7 +1002,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -935,7 +1125,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -1082,7 +1275,10 @@ public class ESForRule {
             Statement smt = conn.createStatement();
             for (int i=0;i<daysBetween;i++) {
                 //构建boolQuery
-                calendar.add(calendar.DATE, 1);
+                //第一次不加1
+                if(i>0){
+                    calendar.add(calendar.DATE, 1);
+                }
                 //当前时间
                 String curDay = sdf.format(calendar.getTime());
                 //窗口起始时间
@@ -1169,7 +1365,10 @@ public class ESForRule {
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             String curDay = sdf.format(calendar.getTime());
 
             BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
@@ -1355,7 +1554,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 //            当前时间
             String curDay = sdf.format(calendar.getTime());
 //            窗口起始时间
@@ -1519,7 +1721,10 @@ public class ESForRule {
 //        QueryBuilder query = QueryBuilders.matchQuery("Lend_flag","11");
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
 // 这个时间就是日期往后推一天的结果
             String curDay = sdf.format(calendar.getTime());
 //            System.out.println(curDay);
@@ -1877,7 +2082,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -2076,7 +2284,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -2236,7 +2447,10 @@ public class ESForRule {
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
@@ -2387,7 +2601,10 @@ public class ESForRule {
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE,1);
+            //第一次不加1
+            if(i>0){
+                calendar.add(calendar.DATE, 1);
+            }
             //当前时间
             String curDay = sdf.format(calendar.getTime());
             //窗口起始时间
