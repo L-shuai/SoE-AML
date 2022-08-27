@@ -808,14 +808,14 @@ public class ESForRule6_10 {
                 calendar.add(calendar.DATE, 1);
                 String curDay = sdf.format(calendar.getTime());
                 //查出每个时间段内符合条件的客户号（基于tb_acc_txn表）
-                String  cst_no_query = "SELECT tb_acc_txn.Cst_no as tbt_cst_no, sum(tb_acc_txn.Org_amt) as total_amt from tb_acc_txn JOIN tb_cst_unit ON tb_acc_txn.Cst_no = tb_cst_unit.Cst_no " +
+                String  cst_no_query = "SELECT tb_acc_txn.Cst_no as tat_cst_no, sum(tb_acc_txn.Org_amt) as total_amt from tb_acc_txn JOIN tb_cst_unit ON tb_acc_txn.Cst_no = tb_cst_unit.Cst_no " +
                         "Where tb_acc_txn.Date = '"+curDay+"'" +" GROUP BY tb_acc_txn.Cst_no";
                 ResultSet res = smt.executeQuery(cst_no_query);
                 List<String> cst_no_list = new ArrayList<>();
                 List<Double> total_amt_list = new ArrayList<>();
                 //将每日分组后的账户添加到list中
                 while(res.next()) {
-                    String acc_no = res.getString("tbt_cst_no");
+                    String acc_no = res.getString("tat_cst_no");
                     Double total_amt = res.getDouble("total_amt");
                     cst_no_list.add(acc_no);
                     total_amt_list.add(total_amt);
