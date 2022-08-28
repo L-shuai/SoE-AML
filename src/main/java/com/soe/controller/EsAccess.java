@@ -29,23 +29,24 @@ public class EsAccess {
 //        // 获取每个任务的返回结果
 //        String result = createOrder.get() + reduceAccount.get() + saveLog.get();
 //        return result;
-//        esForRule.rule_1();
-//        esForRule.rule_2();
-//        esForRule.rule_3();
-//        esForRule.rule_4();
+        esForRule.rule_1();
+        esForRule.rule_2();
+        esForRule.rule_3();
+        esForRule.rule_4();
         esForRule.rule_5();
-//        esForRule.rule_6();
-//        esForRule.rule_7();
-//        esForRule.rule_8();
-//        esForRule.rule_9();
-//        esForRule.rule_10();
-//        esForRule.rule_12();
-//        esForRule.rule_14();
-//        esForRule.rule_15();
-//        esForRule.rule_16();
-//        esForRule.rule_17();
+        esForRule.rule_6();
+        esForRule.rule_7();
+        esForRule.rule_8();
+        esForRule.rule_9();
+        esForRule.rule_10();
+        esForRule.rule_11();
+        esForRule.rule_12();
+        esForRule.rule_14();
+        esForRule.rule_15();
+        esForRule.rule_16();
+        esForRule.rule_17();
         esForRule.rule_18();
-//        esForRule.rule_20();
+        esForRule.rule_20();
         return new AsyncResult<>("searchAll");
 
     }

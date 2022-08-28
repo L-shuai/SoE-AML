@@ -1800,6 +1800,188 @@ public class ESForRule {
 //        return list;
     }
 
+    private List<String> holiday = new ArrayList<>();
+
+    public  void initHoliday() {
+        //holiday.add("2021-01-01");//元旦
+        //holiday.add("2021-01-02");
+        //holiday.add("2021-01-03");
+        holiday.add("2021-02-11");//春节
+        holiday.add("2021-02-12");
+        holiday.add("2021-02-13");
+        holiday.add("2021-02-14");
+        holiday.add("2021-02-15");
+        holiday.add("2021-02-16");
+        holiday.add("2021-02-17");
+        holiday.add("2021-02-26");//元宵节
+        holiday.add("2021-04-03");//清明节
+        holiday.add("2021-04-04");
+        holiday.add("2021-04-05");
+        //holiday.add("2021-05-01");//劳动节
+        //holiday.add("2021-05-02");
+        //holiday.add("2021-05-03");
+        //holiday.add("2021-05-04");
+        //holiday.add("2021-05-05");
+        holiday.add("2021-06-12");//端午节
+        holiday.add("2021-06-13");
+        holiday.add("2021-06-14");
+        holiday.add("2021-09-19");//中秋节
+        holiday.add("2021-09-20");
+        holiday.add("2021-09-21");
+        //holiday.add("2021-10-01");//国庆节
+        //holiday.add("2021-10-02");
+        //holiday.add("2021-10-03");
+        //holiday.add("2021-10-04");
+        //holiday.add("2021-10-05");
+        //holiday.add("2021-10-06");
+        //holiday.add("2021-10-07");
+
+    }
+
+
+    /**
+     * 计算周期：无（根据节假日计算）
+     * 通过表tb_acc_txn中
+     * 字段：
+     * Org_amt：原币种交易金额
+     * 计算节假日交易金额≥500000
+     * 计算节假日交易笔数≥10
+     * 节假日（节假日示例说明：春节-2021-02-01,01号的前一天和后一天共三天的交易金额）
+     * 进行条件过滤
+     */
+
+    @GetMapping("rule_13")
+    @Async
+    public void rule_13() throws ParseException, IOException {
+        List<String> list = new ArrayList<>();
+        initHoliday();
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]), sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+        Calendar calendar2 = new GregorianCalendar();
+        Calendar calendar3 = new GregorianCalendar();
+        HashMap<String, String> result = new HashMap<String, String>();
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+        for (int i = 0; i < daysBetween; i++) {
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+//            当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //判断是否为节假日
+            //Boolean isHoliday = isWorkingDay(curDay);
+            //System.out.println("今天");
+            //System.out.println(curDay);
+            boolean isHoilday = holiday.contains(curDay);
+            //System.out.println(isHoilday);
+            if (isHoilday == false)
+                continue;
+
+            //窗口起始时间
+            calendar3.setTime(sdf.parse(curDay));
+            calendar3.add(calendar3.DATE, -1);
+            String bDate = sdf.format(calendar3.getTime());
+            //System.out.println("昨天");
+            //System.out.println(bDate);
+
+            //窗口截至时间
+            calendar2.setTime(sdf.parse(curDay));
+            calendar2.add(calendar2.DATE, 1);
+            String eDate = sdf.format(calendar2.getTime());
+            // break;
+//            窗口复原
+//            calendar2.setTime(sdf.parse(bDate));
+//            System.out.println(bDate+"  -  "+eDate);
+//        3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+
+            //嵌套子聚合查询
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
+                    .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"))
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
+
+
+            //子聚合  管道聚合不能包含子聚合
+            Map<String, String> bucketsPath = new HashMap<>();
+            bucketsPath.put("count_acc_no", "count_acc_no");
+            bucketsPath.put("sum_org_amt", "sum_org_amt");
+            Script script = new Script("params.count_acc_no >= 10 && params.sum_org_amt >= 500000");
+            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
+            agg_cst_no.subAggregation(bs);
+
+            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
+            searchSourceBuilder.aggregation(agg_cst_no);
+            searchSourceBuilder.size(0);
+
+
+            searchSourceBuilder.query(query);
+            searchRequest.source(searchSourceBuilder);
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_acc_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+                int len = topHits.getHits().getHits().length;
+                //System.out.println(len);
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_cst_no = (String) sourceAsMap.get("cst_no");
+//                客户名称
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                //收款总金额
+                double lend1_amt = 0;
+                //收款交易笔数
+                int lend1_count = 0;
+                //付款总金额
+                double lend2_amt = 0;
+                //付款交易笔数
+                int lend2_count = 0;
+                Date max_date = sdf.parse("1999-01-01");
+                for (int j = 0; j < len; j++) {
+                    Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    //根据Lend_flag判断 收 / 付
+                    String lend_flag = (String) sourceAsMap2.get("lend_flag");
+                    if (lend_flag.equals("10")) { //收
+                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend1_count++;
+                    } else if (lend_flag.equals("11")) {//付
+                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend2_count++;
+                    }
+                    String trade_date = (String) sourceAsMap2.get("date2");
+                    Date new_date = sdf.parse(trade_date);
+                    if(max_date.compareTo(new_date) < 0 ){
+                        max_date = new_date;
+                    }
+                }
+//                Calendar calendar4 = new GregorianCalendar();
+//                calendar4.setTime(max_date);
+//                calendar4.add(calendar4.DATE,1);
+                String record = "JRSJ-013," + sdf.format(max_date) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+                System.out.println(record);
+                list.add(record);
+            }
+        }
+        list = removeDuplicationByHashSet(list);
+        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        //return list;
+    }
+
+
     /**
      * 读取tb_cst_unit表中的客户号和注册资金
      */
@@ -1932,7 +2114,8 @@ public class ESForRule {
                 //总交易金额
                 Sum sum_org_amt =  bucketAggregations.get("sum_org_amt");
                 //若总交易金额不大于注册本金，则没必要遍历该桶
-                if(sum_org_amt.getValue() < reg_amt){
+                //若该客户的注册资金不为0，则没必要遍历该桶
+                if(sum_org_amt.getValue() < reg_amt || reg_amt > 0){
                     continue;
                 }
 

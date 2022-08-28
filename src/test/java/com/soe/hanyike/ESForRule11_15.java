@@ -118,8 +118,8 @@ class ESForRule11_15 {
         Aggregations aggregations = searchResponse.getAggregations();
         Min min = aggregations.get("min");
         Max max = aggregations.get("max");
-        //System.out.println("min = "+min.getValueAsString());
-        //System.out.println("max = "+max.getValueAsString());
+        System.out.println("min = "+min.getValueAsString());
+        System.out.println("max = "+max.getValueAsString());
         return new String[]{min.getValueAsString(), max.getValueAsString()};
     }
 
@@ -397,10 +397,11 @@ class ESForRule11_15 {
                         max_date = new_date;
                     }
                 }
-                Calendar calendar4 = new GregorianCalendar();
-                calendar4.setTime(max_date);
-                calendar4.add(calendar4.DATE,1);
-                String record = "JRSJ-013," + sdf.format(calendar4.getTime()) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+//                Calendar calendar4 = new GregorianCalendar();
+//                calendar4.setTime(max_date);
+//                calendar4.add(calendar4.DATE,1);
+//                String record = "JRSJ-013," + sdf.format(calendar4.getTime()) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+                String record = "JRSJ-013," + sdf.format(max_date) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
                 System.out.println(record);
                 list.add(record);
             }
