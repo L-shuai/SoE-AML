@@ -623,6 +623,7 @@ public class ESForRule6_10 {
 //                System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("date2");
+
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
                 String r_part_acc_name = (String) sourceAsMap.get("part_acc_name");
