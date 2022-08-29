@@ -41,11 +41,13 @@ public class EsAccess {
         esForRule.rule_10();
         esForRule.rule_11();
         esForRule.rule_12();
+        esForRule.rule_13();
         esForRule.rule_14();
         esForRule.rule_15();
         esForRule.rule_16();
         esForRule.rule_17();
         esForRule.rule_18();
+        esForRule.rule_19();
         esForRule.rule_20();
         return new AsyncResult<>("searchAll");
 

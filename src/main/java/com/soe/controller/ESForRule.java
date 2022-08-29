@@ -183,13 +183,13 @@ public class ESForRule {
             //嵌套子聚合查询  以self_acc_name账户名称分桶
             TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no")
                     .subAggregation(AggregationBuilders.cardinality("count_self_bank_code").field("self_bank_code"))
-                    .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt"));
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             //子聚合  管道聚合不能包含子聚合，但是某些类型的管道聚合可以链式使用（比如计算导数的导数）。
             Map<String, String> bucketsPath = new HashMap<>();
             bucketsPath.put("count_self_bank_code", "count_self_bank_code");
-            bucketsPath.put("sum_rmb_amt","sum_rmb_amt");
-            Script script = new Script("params.count_self_bank_code >= 3 && params.sum_rmb_amt >= 500000");
+            bucketsPath.put("sum_org_amt","sum_org_amt");
+            Script script = new Script("params.count_self_bank_code >= 3 && params.sum_org_amt >= 500000");
 //            Script script = new Script("params.count_self_bank_code>=3");
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
             agg_self_acc_name.subAggregation(bs);
@@ -225,7 +225,7 @@ public class ESForRule {
 //                折人民币交易金额-收
                 String r_lend1 = "0";
 //                折人民币交易金额-付
-                Sum r_lend2 = bucketAggregations.get("sum_rmb_amt");
+                Sum r_lend2 = bucketAggregations.get("sum_org_amt");
 //                客户号
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
 //                客户名称
@@ -505,12 +505,12 @@ public class ESForRule {
             //嵌套子聚合查询  以self_acc_name账户名称分桶
             TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_contact1").field("contact1")
                     .subAggregation(AggregationBuilders.cardinality("count_cst_no").field("cst_no"));
-//                    .subAggregation(AggregationBuilders.count("sum_rmb_amt").field("rmb_amt"));
+//                    .subAggregation(AggregationBuilders.count("sum_org_amt").field("org_amt"));
 
             //子聚合  管道聚合不能包含子聚合，但是某些类型的管道聚合可以链式使用（比如计算导数的导数）。
             Map<String, String> bucketsPath = new HashMap<>();
             bucketsPath.put("count_cst_no", "count_cst_no");
-//            bucketsPath.put("sum_rmb_amt","sum_rmb_amt");
+//            bucketsPath.put("sum_org_amt","sum_org_amt");
             Script script = new Script("params.count_cst_no >= 2");
 //            Script script = new Script("params.count_self_bank_code>=3");
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
@@ -628,13 +628,13 @@ public class ESForRule {
             //嵌套子聚合查询  以self_acc_name账户名称分桶
             TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
                     .subAggregation(AggregationBuilders.count("count_self_acc_no").field("self_acc_no"))
-                    .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt"));
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             //子聚合  管道聚合不能包含子聚合，但是某些类型的管道聚合可以链式使用（比如计算导数的导数）。
             Map<String, String> bucketsPath = new HashMap<>();
             bucketsPath.put("count_self_acc_no", "count_self_acc_no");
-            bucketsPath.put("sum_rmb_amt","sum_rmb_amt");
-            Script script = new Script("params.count_self_acc_no >= 3 && params.sum_rmb_amt >= 500000");
+            bucketsPath.put("sum_org_amt","sum_org_amt");
+            Script script = new Script("params.count_self_acc_no >= 3 && params.sum_org_amt >= 500000");
 //            Script script = new Script("params.count_self_bank_code>=3");
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
             agg_self_acc_name.subAggregation(bs);
@@ -687,10 +687,10 @@ public class ESForRule {
                     //根据Lend_flag判断 收 / 付
                     String lend_flag = (String) sourceAsMap2.get("lend_flag");
                     if(lend_flag.equals("10")){ //收
-                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("org_amt");
                         lend1_count++;
                     }else if(lend_flag.equals("11")){//付
-                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("org_amt");
                         lend2_count++;
                     }
 
@@ -841,11 +841,11 @@ public class ESForRule {
                 if(!(sourceAsMap.get("org_amt").toString()).equals("0")){
                     amt = (Double) sourceAsMap.get("org_amt");
                 }
-//                if(sourceAsMap.get("rmb_amt").equals("0")){
+//                if(sourceAsMap.get("org_amt").equals("0")){
 //                    System.out.println(0);
 //                }
 
-//                Double rmt = Double.parseDouble((String) sourceAsMap.get("rmb_amt"));
+//                Double rmt = Double.parseDouble((String) sourceAsMap.get("org_amt"));
 
 //                Double org_amt = (Double.parseDouble(sourceAsMap.get("org_amt").toString()));
                 if(low_rate_cst_no_list.contains(r_cst_no)){
@@ -919,7 +919,7 @@ public class ESForRule {
             //按账户名进行分桶
             TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
                     .subAggregation(AggregationBuilders.cardinality("count_part_acc_no").field("part_acc_no"))
-                    .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt"));
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             //按交易账户数量大于等于3过滤
             Map<String, String> bucketsPath = new HashMap<>();
@@ -952,7 +952,7 @@ public class ESForRule {
 //                System.out.println(len);
                 String r_date = (String) sourceAsMap.get("date2");
 //                折人民币交易金额-收
-//                Sum r_lend1 = bucketAggregations.get("sum_rmb_amt");
+//                Sum r_lend1 = bucketAggregations.get("sum_org_amt");
 ////                折人民币交易金额-付
 //                String r_lend2 = "0";
 //                客户号
@@ -1066,10 +1066,10 @@ public class ESForRule {
                     }
                     String lend_flag = (String) sourceAsMap1.get("lend_flag");
                     if(lend_flag.equals("10")){ //收
-                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("org_amt").toString())) ;
                         lend1_count++;
                     }else if(lend_flag.equals("11")){//付
-                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("org_amt").toString())) ;
                         lend2_count++;
                     }
                 }
@@ -1145,7 +1145,7 @@ public class ESForRule {
             //按照账户分桶
             TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no").size(50)
                     .subAggregation(AggregationBuilders.count("total_bank_name_count").field("part_bank_name"))
-                    .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt")); //若该桶交易金额小于500000，则没必要再遍历了
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt")); //若该桶交易金额小于500000，则没必要再遍历了
 
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(50000));
             searchSourceBuilder.aggregation(agg_self_acc_no);
@@ -1177,9 +1177,9 @@ public class ESForRule {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
 //                ValueCount  total_transaction = bucketAggregations.get("total_bank_name_count");
-                Sum sum_rmb_amt = bucketAggregations.get("sum_rmb_amt");
+                Sum sum_org_amt = bucketAggregations.get("sum_org_amt");
                 //若该桶交易金额小于500000，则没必要再遍历该桶了
-                if(sum_rmb_amt.getValue()<500000){
+                if(sum_org_amt.getValue()<500000){
                     continue;
                 }
 //                int total_transaction_count = (int) total_transaction.value();
@@ -1208,7 +1208,7 @@ public class ESForRule {
                 for (int j = 0; j < len; j++) {
                     Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
                     String bank_name = (String) sourceAsMap1.get("part_bank_name");
-                    Double transaction_money = (Double) sourceAsMap1.get("rmb_amt");
+                    Double transaction_money = (Double) sourceAsMap1.get("org_amt");
                     if(bank_name.contains("邮")){
                         youchu_count += 1;
                         youchu_money += transaction_money;
@@ -1221,12 +1221,12 @@ public class ESForRule {
                     }
                     String lend_flag = (String) sourceAsMap1.get("lend_flag");
                     if(lend_flag.equals("10")){ //收
-//                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
-                        lend1_amt = lend1_amt + (Double)sourceAsMap1.get("rmb_amt") ;
+//                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("org_amt").toString())) ;
+                        lend1_amt = lend1_amt + (Double)sourceAsMap1.get("org_amt") ;
                         lend1_count++;
                     }else if(lend_flag.equals("11")){//付
-//                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
-                        lend2_amt = lend2_amt + (Double)sourceAsMap1.get("rmb_amt") ;
+//                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("org_amt").toString())) ;
+                        lend2_amt = lend2_amt + (Double)sourceAsMap1.get("org_amt") ;
                         lend2_count++;
                     }
                 }
@@ -1299,7 +1299,7 @@ public class ESForRule {
                 for(int j = 0; j<cst_no_list.size();j++){
                     //按照题目描述做多表查询操作
                     String union_query = "select tb_acc_txn.Self_acc_name as tat_self_acc_name, tb_acc_txn.Date as tat_date ," +
-                            "tb_acc_txn.Rmb_amt as tat_rmb_amt from tb_cred_txn, tb_acc_txn,tb_cst_unit where " +
+                            "tb_acc_txn.org_amt as tat_org_amt from tb_cred_txn, tb_acc_txn,tb_cst_unit where " +
                             "tb_cred_txn.Lend_flag = 11 and tb_cred_txn.Pos_owner is not null and " +
                             "tb_cred_txn.Pos_owner = tb_acc_txn.Self_acc_name and  tb_acc_txn.Lend_flag = 11 " +
                             "and tb_acc_txn.Part_acc_name = tb_cst_unit.Rep_name and tb_acc_txn.Cst_no ="+ "'"+cst_no_list.get(j)+"' " +
@@ -1365,13 +1365,13 @@ public class ESForRule {
             queryBuilder.filter(QueryBuilders.termQuery("date2", curDay));
 
             TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-                    .subAggregation(AggregationBuilders.sum("sum_rmb_amt").field("rmb_amt"));
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             //按交易账户数量大于等于3过滤
             Map<String, String> bucketsPath = new HashMap<>();
-            bucketsPath.put("sum_rmb_amt", "sum_rmb_amt");
+            bucketsPath.put("sum_org_amt", "sum_org_amt");
             //判断每个账户的总交易金额的结尾是否为吉利数
-            Script script = new Script("(params.sum_rmb_amt - 666)%1000 == 0 || (params.sum_rmb_amt - 888)%1000 == 0 || (params.sum_rmb_amt - 99)%100 == 0 ");
+            Script script = new Script("(params.sum_org_amt - 666)%1000 == 0 || (params.sum_org_amt - 888)%1000 == 0 || (params.sum_org_amt - 99)%100 == 0 ");
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
             agg_self_acc_no.subAggregation(bs);
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
@@ -1392,7 +1392,7 @@ public class ESForRule {
             for (Terms.Bucket bucket : buckets) {
                 // 解析bucket
                 Aggregations bucketAggregations = bucket.getAggregations();
-                Sum sum = bucketAggregations.get("sum_rmb_amt");
+                Sum sum = bucketAggregations.get("sum_org_amt");
 //                System.out.println(sum.getValueAsString());
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
@@ -1414,10 +1414,10 @@ public class ESForRule {
                     Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
                     String lend_flag = (String) sourceAsMap1.get("lend_flag");
                     if(lend_flag.equals("10")){ //收
-                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend1_amt = lend1_amt + (Double.parseDouble(sourceAsMap1.get("org_amt").toString())) ;
                         lend1_count++;
                     }else if(lend_flag.equals("11")){//付
-                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("rmb_amt").toString())) ;
+                        lend2_amt = lend2_amt + (Double.parseDouble(sourceAsMap1.get("org_amt").toString())) ;
                         lend2_count++;
                     }
                 }
@@ -1527,7 +1527,7 @@ public class ESForRule {
                     Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
                     String M_agent_no = (String) sourceAsMap1.get("agent_no");
                     String M_agent_name = (String) sourceAsMap1.get("agent_name");
-                    Double M_rmb_amt = (Double) sourceAsMap1.get("rmb_amt");
+                    Double M_org_amt = (Double) sourceAsMap1.get("org_amt");
                     String M_key = M_agent_no + M_agent_name;
                     String trade_date = (String) sourceAsMap1.get("date2");
                     if (M_agent_name != "@N") {
@@ -1541,21 +1541,21 @@ public class ESForRule {
                             agent_trade_num.put(M_key, 1);
                         }
                         if (sum_money.containsKey(M_key)) {
-                            sum = sum_money.get(M_key) + M_rmb_amt;
+                            sum = sum_money.get(M_key) + M_org_amt;
                             sum_money.put(M_key, sum);
                             if (sum > max_sum) {
                                 max_sum = sum;
                             }
                         } else {
-                            sum_money.put(M_key, M_rmb_amt);
+                            sum_money.put(M_key, M_org_amt);
                         }
 
                         String lend_flag = (String) sourceAsMap1.get("lend_flag");
                         if (lend_flag.equals("10")) {
-                            lend1_amt += M_rmb_amt;
+                            lend1_amt += M_org_amt;
                             lend1_count++;
                         } else if (lend_flag.equals("11")) {
-                            lend2_amt += M_rmb_amt;
+                            lend2_amt += M_org_amt;
                             lend2_count++;
                         }
                     }
@@ -1956,10 +1956,10 @@ public class ESForRule {
                     //根据Lend_flag判断 收 / 付
                     String lend_flag = (String) sourceAsMap2.get("lend_flag");
                     if (lend_flag.equals("10")) { //收
-                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("org_amt");
                         lend1_count++;
                     } else if (lend_flag.equals("11")) {//付
-                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("org_amt");
                         lend2_count++;
                     }
                     String trade_date = (String) sourceAsMap2.get("date2");
@@ -2061,7 +2061,8 @@ public class ESForRule {
 
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
+//            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no") //按cst_no聚合
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             Map<String, String> bucketsPath = new HashMap<>();
@@ -2102,7 +2103,7 @@ public class ESForRule {
 //                折人民币交易金额-收
                 String r_lend1 = "0";
 //                折人民币交易金额-付
-                Sum r_lend2 = bucketAggregations.get("sum_rmb_amt");
+                Sum r_lend2 = bucketAggregations.get("sum_org_amt");
 //                客户号
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
 //                客户名称
@@ -2133,10 +2134,10 @@ public class ESForRule {
                     //根据Lend_flag判断 收 / 付
                     String lend_flag = (String) sourceAsMap2.get("lend_flag");
                     if(lend_flag.equals("10")){ //收
-                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("org_amt");
                         lend1_count++;
                     }else if(lend_flag.equals("11")){//付
-                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("org_amt");
                         lend2_count++;
                     }
 
@@ -2194,7 +2195,7 @@ public class ESForRule {
                 //从list中取出每个账户，并按条件查询每日该账户的记录
                 for(int j = 0; j<cst_no_list.size();j++){
                     //按照题目描述做多表查询操作
-                    String union_query = "SELECT tb_acc_txn.Lend_flag as tat_lend_flag, tb_cst_unit.Code as tcu_reg_amt,tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Date as tat_date," +
+                    String union_query = "SELECT tb_acc_txn.Lend_flag as tat_lend_flag, tb_cst_unit.Code as tcu_reg_amt,tb_acc_txn.org_amt as tat_org_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Date as tat_date," +
                             "tb_acc_txn.Self_acc_name as tat_self_acc_name from tb_acc_txn JOIN tb_cst_unit ON tb_acc_txn.Cst_no = tb_cst_unit.Cst_no" +
                             " where tb_acc_txn.Date = '"+curDay+"'"+
                             "and tb_acc_txn.Cst_no = "+"'"+cst_no_list.get(j)+"'";
@@ -2219,7 +2220,7 @@ public class ESForRule {
                         String cst_no = union_res.getString("tat_cst_no");
                         String acc_name = union_res.getString("tat_self_acc_name");
                         String lend_flag = union_res.getString("tat_lend_flag");
-                        Double lend_amt = union_res.getDouble("tat_rmb_amt");
+                        Double lend_amt = union_res.getDouble("tat_org_amt");
                         if(reg_amt == 0){
                             reg_amt = reg_amt1;
                         }
@@ -2301,7 +2302,7 @@ public class ESForRule {
             res.close();
             for(int j = 0; j<cst_no_list.size();j++) {
                 //按照题目描述做多表查询操作
-                String union_query = "SELECT tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Self_acc_name as tat_self_acc_name, " +
+                String union_query = "SELECT tb_acc_txn.org_amt as tat_org_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Self_acc_name as tat_self_acc_name, " +
                         "tb_acc_txn.Date as tat_date, tb_acc_txn.Lend_flag as tat_lend_flag from tb_acc_txn JOIN tb_cst_pers " +
                         " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
                         "where  tb_cst_pers.Id_type = '110021' " +
@@ -2328,7 +2329,7 @@ public class ESForRule {
                     String cst_no = union_res.getString("tat_cst_no");
                     String acc_name = union_res.getString("tat_self_acc_name");
                     String lend_flag = union_res.getString("tat_lend_flag");
-                    Double lend_amt = union_res.getDouble("tat_rmb_amt");
+                    Double lend_amt = union_res.getDouble("tat_org_amt");
                     if(lend_flag.equals("10")){
                         lend1_count += 1;
                         lend1_amt += lend_amt;
@@ -2435,7 +2436,7 @@ public class ESForRule {
 //            bucketsPath.put("sum_org_amt","sum_org_amt");
 //            bucketsPath.put("count","_count");
 //            //三日交易金额≥10000 且 交易金额是10000的整数倍的整万
-//            Script script = new Script("params.sum_rmb_amt >= 10000 && params.sum_rmb_amt % 10000 == 0");
+//            Script script = new Script("params.sum_org_amt >= 10000 && params.sum_org_amt % 10000 == 0");
 //            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
 //            agg_self_acc_no.subAggregation(bs);
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
@@ -2488,18 +2489,18 @@ public class ESForRule {
                 for (int j = 0; j < len; j++) {
                     Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[j].getSourceAsMap();
                     //单笔交易金额是10000的整数倍(前提条件是整数)
-                    double rmb_amt = (Double) sourceAsMap2.get("rmb_amt");
-                    if((rmb_amt % (int)rmb_amt == 0) && ((int) rmb_amt % 10000 ==0 )){
+                    double org_amt = (Double) sourceAsMap2.get("org_amt");
+                    if((org_amt % (int)org_amt == 0) && ((int) org_amt % 10000 ==0 )){
                         r_date = (String) sourceAsMap.get("date2");
                         //根据Lend_flag判断 收 / 付
                         String lend_flag = (String) sourceAsMap2.get("lend_flag");
                         String part_acc_no = (String) sourceAsMap2.get("part_acc_no");
                         if(lend_flag.equals("10")){ //收
-                            lend1_amt = lend1_amt + (Double) sourceAsMap2.get("rmb_amt");
+                            lend1_amt = lend1_amt + (Double) sourceAsMap2.get("org_amt");
                             lend1_count++;
                         }else if(lend_flag.equals("11")){//付
-//                            lend2_amt = lend2_amt + (Double) sourceAsMap2.get("rmb_amt");
-                            lend2_amt = lend2_amt + rmb_amt;
+//                            lend2_amt = lend2_amt + (Double) sourceAsMap2.get("org_amt");
+                            lend2_amt = lend2_amt + org_amt;
                             lend2_count++;
                         }
                         if(part_count_map.containsKey(part_acc_no)){
@@ -2860,13 +2861,13 @@ public class ESForRule {
                 for (int j = 0; j < len; j++) {
                     Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
                     r_date = (String) sourceAsMap1.get("date2");
-                    double rmb_amt = (Double) sourceAsMap1.get("rmb_amt"); //折人民币交易金额
+                    double org_amt = (Double) sourceAsMap1.get("org_amt"); //折人民币交易金额
                     String lend_flag = (String) sourceAsMap1.get("lend_flag"); //资金收付标识
                     if (lend_flag.equals("10")) {//收
-                        lend1_amt = lend1_amt + (Double) sourceAsMap1.get("rmb_amt");
+                        lend1_amt = lend1_amt + (Double) sourceAsMap1.get("org_amt");
                         lend1_count++;
                     } else if (lend_flag.equals("11")) {//付
-                        lend2_amt = lend2_amt + rmb_amt;
+                        lend2_amt = lend2_amt + org_amt;
                         lend2_count++;
                     }
                     lend_count = lend1_count + lend2_count;
@@ -2929,7 +2930,7 @@ public class ESForRule {
             //从list中去除每个账户，并按条件查询该账户的记录
             for(int j = 0; j<cst_no_list.size();j++){
                 //按照题目描述做多表查询操作
-                String union_query = "SELECT tb_cst_unit.Id_no2 as tat_id_no,tb_acc_txn.Lend_flag as tat_lend_flag, tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Date as tat_date," +
+                String union_query = "SELECT tb_cst_unit.Id_no2 as tat_id_no,tb_acc_txn.Lend_flag as tat_lend_flag, tb_acc_txn.org_amt as tat_org_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Date as tat_date," +
                         "tb_acc_txn.Self_acc_name as tat_self_acc_name from tb_acc_txn JOIN tb_cst_unit ON tb_acc_txn.Cst_no = tb_cst_unit.Cst_no "+
                         "where (tb_cst_unit.Id_type2 = '110001' or tb_cst_unit.Id_type2 = '110003') "+
                         "and tb_acc_txn.Org_amt > 1 "+
@@ -2956,7 +2957,7 @@ public class ESForRule {
                     String cst_no = union_res.getString("tat_cst_no");
                     String acc_name = union_res.getString("tat_self_acc_name");
                     String lend_flag = union_res.getString("tat_lend_flag");
-                    Double lend_amt = union_res.getDouble("tat_rmb_amt");
+                    Double lend_amt = union_res.getDouble("tat_org_amt");
                     String id_no = union_res.getString("tat_id_no");
                     int age = age(r_date,id_no.substring(6,14));
                     if(age<20){
