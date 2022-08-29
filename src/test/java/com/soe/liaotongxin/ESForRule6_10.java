@@ -10,6 +10,7 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.script.Script;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
@@ -81,6 +82,67 @@ public class ESForRule6_10 {
         System.out.println("min = "+min.getValueAsString());
         System.out.println("max = "+max.getValueAsString());
         return new String[]{min.getValueAsString(),max.getValueAsString()};
+    }
+    public Map<String,Integer> get_cred_txn(String bDate,String eDate) throws IOException, ParseException {
+        //返回map, key:客户号   value：注册资金
+        Map<String,Integer> result = new HashMap<>();
+        SearchRequest searchRequest = new SearchRequest("tb_cred_txn");//指定搜索索引
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
+        QueryBuilder query = QueryBuilders.boolQuery();
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
+
+        Date date_b=sdf1.parse(bDate);
+        Date date_e=sdf1.parse(eDate);
+
+        String bDate_new = sdf2.format(date_b);
+        String eDate_new = sdf2.format(date_e);
+        QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date").format("yyyyMMdd").gte(bDate_new).lte(eDate_new);
+        ((BoolQueryBuilder) query).filter(queryBuilder1);
+
+        //资金收付标识为付
+        QueryBuilder queryBuilder2 = QueryBuilders.termQuery("lend_flag","11");
+        ((BoolQueryBuilder) query).filter(queryBuilder2);
+        QueryBuilder queryBuilder3 = QueryBuilders.termQuery("pow_owner","@N");
+        ((BoolQueryBuilder) query).mustNot(queryBuilder3);
+        sourceBuilder.query(query).fetchSource(new String[]{"pos_owner","date"}, new String[]{});//查询tb_cred_txn 表的pos_owner字段
+        sourceBuilder.size(100000);
+        searchRequest.source(sourceBuilder);//指定查询条件
+
+        //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//        System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+        //获取结果
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        for(SearchHit hit:hits){
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            String pos_owner = (String) sourceAsMap.get("pos_owner");
+            result.put(pos_owner,1);
+        }
+        return result;
+    }
+    public Map<String,Integer> get_cst_unit() throws IOException {
+        //返回List<String>：rep_name:法人姓名
+        Map<String,Integer> result = new HashMap<>();
+        SearchRequest searchRequest = new SearchRequest("tb_cst_unit");//指定搜索索引
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();//指定条件对象
+        sourceBuilder.query(QueryBuilders.matchAllQuery()).fetchSource(new String[]{"rep_name"}, new String[]{});//查询rep_name字段
+
+        sourceBuilder.size(100000);
+        searchRequest.source(sourceBuilder);//指定查询条件
+
+        //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//        System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
+        //获取结果
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        for(SearchHit hit:hits){
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            String r_name = (String) sourceAsMap.get("rep_name");
+            result.put(r_name,1);
+//            System.out.println(r_name);
+        }
+        return result;
     }
     /**
      * "计算周期：每日
@@ -485,6 +547,146 @@ public class ESForRule6_10 {
             throw new RuntimeException(e);
         }
 
+    }
+    @Test
+    public void rule_9_new() throws IOException, ParseException {
+        System.out.println("rule_9 : begin");
+
+        List<String> list = new ArrayList<>();
+        //仅 公司账户
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+        Calendar calendar = new GregorianCalendar();
+//        calendar.setTime(sdf.parse(min_max[0]));
+        calendar.setTime(sdf.parse("2021-01-12"));
+
+        Calendar calendar2 = new GregorianCalendar();
+        //获取客户对应的注册资金map
+
+        Map<String,Integer> rep_map = get_cst_unit();
+
+        for (int i=0;i<daysBetween;i++) {
+
+            SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+            //当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //窗口起始时间
+            String bDate = sdf.format(calendar.getTime());
+            calendar2.setTime(sdf.parse(curDay));
+            //窗口截至时间
+            calendar2.add(calendar2.DATE, 2);
+            String eDate = sdf.format(calendar2.getTime());
+            Map<String,Integer> cred_map = get_cred_txn(bDate,eDate);
+            //3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+//            QueryBuilder queryBuilder1 = QueryBuilders.termQuery("date2",curDay);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+//        //公司账户
+            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("lend_flag", "11");
+            ((BoolQueryBuilder) query).filter(queryBuilder2);
+
+
+
+            //嵌套子聚合查询  以self_acc_name账户名称分桶
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_cst_no").field("cst_no");
+
+            agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
+            searchSourceBuilder.aggregation(agg_self_acc_name);
+            searchSourceBuilder.size(0);
+
+
+            searchSourceBuilder.query(query);
+
+            searchRequest.source(searchSourceBuilder);
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_cst_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+
+                int len = topHits.getHits().getHits().length;
+//                System.out.println(len);
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_date = (String) sourceAsMap.get("date2");
+                String r_cst_no = (String) sourceAsMap.get("cst_no");
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                String r_part_acc_name = (String) sourceAsMap.get("part_acc_name");
+                boolean cred_flag = false;
+                boolean cst_unit_flag = false;
+                SimpleDateFormat sdf1= new SimpleDateFormat("yyyyMMdd");
+                Date date_max = sdf.parse("1999-01-01");
+                List<String> acc_name_list = new ArrayList<>();
+                List<String> part_acc_name_list = new ArrayList<>();
+                String final_name= "";
+                //遍历单个cst_no桶内的所有数据，得到所有不同的self_acc_name、得到最大的日期
+                for (int j = 0;j<len;j++){
+                    Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    String date_per_row = (String) sourceAsMap1.get("date2");
+                    String acc_name = (String) sourceAsMap1.get("self_acc_name");
+                    String part_acc_name = (String) sourceAsMap1.get("part_acc_name");
+                    if(acc_name_list.contains(acc_name) == false){
+                        acc_name_list.add(acc_name);
+                    }
+                    if(part_acc_name_list.contains(part_acc_name) == false){
+                        part_acc_name_list.add(part_acc_name);
+                    }
+                    Date new_date = sdf.parse(date_per_row);
+                    if(date_max.compareTo(new_date) < 0 ){
+                        date_max = new_date;
+                    }
+
+                }
+                if(acc_name_list.size()>1){
+                    System.out.println(acc_name_list.size());
+                }
+                //遍历同一cst_no下的不同self_acc_name，如果包含在cred_map或rep_map则输出
+                for(int name_idx = 0;name_idx<acc_name_list.size();name_idx++){
+                    if(cred_map.containsKey(acc_name_list.get(name_idx))){
+                        final_name = acc_name_list.get(name_idx);
+                        cred_flag = true;
+                        break;
+                    }
+                }
+                for(int part_idx = 0;part_idx<part_acc_name_list.size();part_idx++){
+                    if(rep_map.containsKey(part_acc_name_list.get(part_idx))){
+                        cst_unit_flag = true;
+                        break;
+                    }
+                }
+                if((cred_flag || cst_unit_flag) == false){
+                    continue;
+                }
+                if(final_name!=""){
+                    r_self_acc_name = final_name;
+                }
+                String record = "JRSJ-009,"+sdf.format(date_max)+","+r_cst_no+","+r_self_acc_name+",,,,";
+                list.add(record);
+                System.out.println(record);
+
+            }
+//            restHighLevelClient.close();
+
+        }
+
+//        }
+//        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        System.out.println("rule_009 : end");
+//        return list;
     }
     @Test
     public void rule_10_test() throws IOException, ParseException{
