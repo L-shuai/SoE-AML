@@ -558,8 +558,8 @@ public class ESForRule6_10 {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
         Calendar calendar = new GregorianCalendar();
-//        calendar.setTime(sdf.parse(min_max[0]));
-        calendar.setTime(sdf.parse("2021-01-12"));
+        calendar.setTime(sdf.parse(min_max[0]));
+//        calendar.setTime(sdf.parse("2021-01-12"));
 
         Calendar calendar2 = new GregorianCalendar();
         //获取客户对应的注册资金map
@@ -620,7 +620,6 @@ public class ESForRule6_10 {
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
                 int len = topHits.getHits().getHits().length;
-//                System.out.println(len);
                 Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
                 String r_date = (String) sourceAsMap.get("date2");
 
