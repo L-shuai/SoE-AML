@@ -551,144 +551,60 @@ public class ESForRule6_10 {
 
     }
     @Test
-    public void rule_9_new() throws IOException, ParseException {
-        System.out.println("rule_9 : begin");
+    public void rule_9_no_group_test() throws IOException, ParseException{
+        try {
+            List<String> list = new ArrayList<>();
+            String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+            long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
-        List<String> list = new ArrayList<>();
-        //仅 公司账户
-        String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
-        Calendar calendar = new GregorianCalendar();
-        calendar.setTime(sdf.parse(min_max[0]));
-//        calendar.setTime(sdf.parse("2021-01-12"));
-
-        Calendar calendar2 = new GregorianCalendar();
-        //获取客户对应的注册资金map
-
-        Map<String,Integer> rep_map = get_cst_unit();
-
-        for (int i=0;i<daysBetween;i++) {
-
-            SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
-
-            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-            //构建boolQuery
-            QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
-            //当前时间
-            String curDay = sdf.format(calendar.getTime());
-            //窗口起始时间
-            String bDate = sdf.format(calendar.getTime());
-            calendar2.setTime(sdf.parse(curDay));
-            //窗口截至时间
-            calendar2.add(calendar2.DATE, 2);
-            String eDate = sdf.format(calendar2.getTime());
-            Map<String,Integer> cred_map = get_cred_txn(bDate,eDate);
-            //3天为窗口
-            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
-//            QueryBuilder queryBuilder1 = QueryBuilders.termQuery("date2",curDay);
-            ((BoolQueryBuilder) query).filter(queryBuilder1);
-//        //公司账户
-            QueryBuilder queryBuilder2 = QueryBuilders.termQuery("lend_flag", "11");
-            ((BoolQueryBuilder) query).filter(queryBuilder2);
-
-
-
-            //嵌套子聚合查询  以self_acc_name账户名称分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_cst_no").field("cst_no");
-
-            agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
-            searchSourceBuilder.aggregation(agg_self_acc_name);
-            searchSourceBuilder.size(0);
-
-
-            searchSourceBuilder.query(query);
-
-            searchRequest.source(searchSourceBuilder);
-//            System.out.println("查询条件：" + searchSourceBuilder.toString());
-
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-
-            Aggregations aggregations = searchResponse.getAggregations();
-
-            ParsedTerms txn_per_day = aggregations.get("agg_cst_no");
-            // 获取到分组后的所有bucket
-            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
-            for (Terms.Bucket bucket : buckets) {
-                // 解析bucket
-                Aggregations bucketAggregations = bucket.getAggregations();
-
-                ParsedTopHits topHits = bucketAggregations.get("topHits");
-
-                int len = topHits.getHits().getHits().length;
-                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
-                String r_date = (String) sourceAsMap.get("date2");
-
-                String r_cst_no = (String) sourceAsMap.get("cst_no");
-                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
-                String r_part_acc_name = (String) sourceAsMap.get("part_acc_name");
-                boolean cred_flag = false;
-                boolean cst_unit_flag = false;
-                SimpleDateFormat sdf1= new SimpleDateFormat("yyyyMMdd");
-                Date date_max = sdf.parse("1999-01-01");
-                List<String> acc_name_list = new ArrayList<>();
-                List<String> part_acc_name_list = new ArrayList<>();
-                String final_name= "";
-                //遍历单个cst_no桶内的所有数据，得到所有不同的self_acc_name、得到最大的日期
-                for (int j = 0;j<len;j++){
-                    Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
-                    String date_per_row = (String) sourceAsMap1.get("date2");
-                    String acc_name = (String) sourceAsMap1.get("self_acc_name");
-                    String part_acc_name = (String) sourceAsMap1.get("part_acc_name");
-                    if(acc_name_list.contains(acc_name) == false){
-                        acc_name_list.add(acc_name);
-                    }
-                    if(part_acc_name_list.contains(part_acc_name) == false){
-                        part_acc_name_list.add(part_acc_name);
-                    }
-                    Date new_date = sdf.parse(date_per_row);
-                    if(date_max.compareTo(new_date) < 0 ){
-                        date_max = new_date;
-                    }
-
+            Calendar calendar = new GregorianCalendar();
+            calendar.setTime(sdf.parse(min_max[0]));
+            Calendar calendar2 = new GregorianCalendar();
+            Class.forName("com.mysql.jdbc.Driver");
+            String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
+            Connection conn = DriverManager.getConnection(url,"soe","soe");
+            Statement smt = conn.createStatement();
+            for (int i=0;i<daysBetween;i++) {
+                //构建boolQuery
+                calendar.add(calendar.DATE, 1);
+                //当前时间
+                String curDay = sdf.format(calendar.getTime());
+                //窗口起始时间
+                String bDate = sdf.format(calendar.getTime());
+                calendar2.setTime(sdf.parse(curDay));
+                //窗口截至时间
+                calendar2.add(calendar2.DATE, 2);
+                String eDate = sdf.format(calendar2.getTime());
+                //在时间段内按客户号进行分桶（基于tb_acc_txn表）
+                String  cst_no_query = "select tb_cred_txn.Cst_no as tct_cst_no,tb_cred_txn.Date as tct_date,tb_cred_txn.Self_acc_name as tct_self_acc_name" +
+                        " from tb_cred_txn, tb_acc_txn,tb_cst_unit where tb_cred_txn.Date = tb_acc_txn.Date and " +
+                        "tb_cred_txn.Lend_flag = '11' and tb_cred_txn.Pos_owner != '@N' and " +
+                        "tb_cred_txn.Pos_owner = tb_acc_txn.Self_acc_name and  tb_acc_txn.Lend_flag = '11' " +
+                        "and tb_acc_txn.Part_acc_name = tb_cst_unit.Rep_name and tb_cred_txn.Date between "+"'"+bDate+"'"+" and "+"'"+eDate+"'" ;
+                ResultSet res = smt.executeQuery(cst_no_query);
+                while(res.next()) {
+                    String r_cst_no = res.getString("tct_cst_no");
+                    String r_self_acc_name = res.getString("tct_self_acc_name");
+                    String date = res.getString("tct_date");
+                    SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
+                    String Date_new = sdf1.format(sdf.parse(date));
+                    String record = "JRSJ-009,"+Date_new+","+r_cst_no+","+r_self_acc_name+",,,,";
+                    System.out.println(record);
+                    list.add(record);
                 }
-                if(acc_name_list.size()>1){
-                    System.out.println(acc_name_list.size());
-                }
-//                //遍历同一cst_no下的不同self_acc_name，如果包含在cred_map或rep_map则输出
-//                for(int name_idx = 0;name_idx<acc_name_list.size();name_idx++){
-//                    if(cred_map.containsKey(acc_name_list.get(name_idx))){
-//                        final_name = acc_name_list.get(name_idx);
-//                        cred_flag = true;
-//                        break;
-//                    }
-//                }
-                for(int part_idx = 0;part_idx<part_acc_name_list.size();part_idx++){
-                    if(rep_map.containsKey(part_acc_name_list.get(part_idx))){
-                        cst_unit_flag = true;
-                        break;
-                    }
-                }
-                if((cst_unit_flag) == false){
-                    continue;
-                }
-                if(final_name!=""){
-                    r_self_acc_name = final_name;
-                }
-                String record = "JRSJ-009,"+sdf.format(date_max)+","+r_cst_no+","+r_self_acc_name+",,,,";
-                list.add(record);
-                System.out.println(record);
+
 
             }
-//            restHighLevelClient.close();
-
+            // 关闭流 (先开后关)
+            smt.close();
+            conn.close();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
 
-//        }
-//        CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_009 : end");
-//        return list;
     }
     @Test
     public void rule_10_test() throws IOException, ParseException{

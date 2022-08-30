@@ -1346,6 +1346,63 @@ public class ESForRule {
             throw new RuntimeException(e);
         }
     }
+    @GetMapping("rule_9_new")
+    @Async
+    public void rule_9_no_group() throws IOException, ParseException{
+        try {
+            List<String> list = new ArrayList<>();
+            String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+            long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+            Calendar calendar = new GregorianCalendar();
+            calendar.setTime(sdf.parse(min_max[0]));
+            Calendar calendar2 = new GregorianCalendar();
+            Class.forName("com.mysql.jdbc.Driver");
+            String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
+            Connection conn = DriverManager.getConnection(url,"soe","soe");
+            Statement smt = conn.createStatement();
+            for (int i=0;i<daysBetween;i++) {
+                //构建boolQuery
+                calendar.add(calendar.DATE, 1);
+                //当前时间
+                String curDay = sdf.format(calendar.getTime());
+                //窗口起始时间
+                String bDate = sdf.format(calendar.getTime());
+                calendar2.setTime(sdf.parse(curDay));
+                //窗口截至时间
+                calendar2.add(calendar2.DATE, 2);
+                String eDate = sdf.format(calendar2.getTime());
+                //在时间段内按客户号进行分桶（基于tb_acc_txn表）
+                String  cst_no_query = "select tb_cred_txn.Cst_no as tct_cst_no,tb_cred_txn.Date as tct_date,tb_cred_txn.Self_acc_name as tct_self_acc_name" +
+                        " from tb_cred_txn, tb_acc_txn,tb_cst_unit where tb_cred_txn.Date = tb_acc_txn.Date and " +
+                        "tb_cred_txn.Lend_flag = '11' and tb_cred_txn.Pos_owner != '@N' and " +
+                        "tb_cred_txn.Pos_owner = tb_acc_txn.Self_acc_name and  tb_acc_txn.Lend_flag = '11' " +
+                        "and tb_acc_txn.Part_acc_name = tb_cst_unit.Rep_name and tb_cred_txn.Date between "+"'"+bDate+"'"+" and "+"'"+eDate+"'" ;
+                ResultSet res = smt.executeQuery(cst_no_query);
+                while(res.next()) {
+                    String r_cst_no = res.getString("tct_cst_no");
+                    String r_self_acc_name = res.getString("tct_self_acc_name");
+                    String date = res.getString("tct_date");
+                    SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
+                    String Date_new = sdf1.format(sdf.parse(date));
+                    String record = "JRSJ-009,"+Date_new+","+r_cst_no+","+r_self_acc_name+",,,,";
+                    System.out.println(record);
+                    list.add(record);
+                }
+
+
+            }
+            list = removeDuplicationByHashSet(list);
+            CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+            System.out.println("rule_9 : end");
+            //return list;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
     @GetMapping("rule_10")
     @Async
     public void rule_10() throws IOException, ParseException{
