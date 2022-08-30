@@ -181,7 +181,7 @@ public class ESForRule {
 
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.cardinality("count_self_bank_code").field("self_bank_code"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -341,7 +341,7 @@ public class ESForRule {
 //            ((BoolQueryBuilder) query).mustNot(queryBuilder4);
 
             //嵌套子聚合查询  以agent_no分桶
-            TermsAggregationBuilder agg_agent_no = AggregationBuilders.terms("agg_agent_no").field("agent_no")
+            TermsAggregationBuilder agg_agent_no = AggregationBuilders.terms("agg_agent_no").field("agent_no").size(30000)
                     .subAggregation(AggregationBuilders.cardinality("count_self_acc_no").field("self_acc_no")); //账户数量
 
 
@@ -503,7 +503,7 @@ public class ESForRule {
 
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_contact1").field("contact1")
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_contact1").field("contact1").size(30000)
                     .subAggregation(AggregationBuilders.cardinality("count_cst_no").field("cst_no"));
 //                    .subAggregation(AggregationBuilders.count("sum_org_amt").field("org_amt"));
 
@@ -627,7 +627,7 @@ public class ESForRule {
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
 //            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.count("count_self_acc_no").field("self_acc_no"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -919,7 +919,7 @@ public class ESForRule {
             queryBuilder.filter(QueryBuilders.termQuery("lend_flag", "10"));
             //按账户名进行分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.cardinality("count_part_acc_no").field("part_acc_no"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -1021,7 +1021,7 @@ public class ESForRule {
             ((BoolQueryBuilder) query).filter(queryBuilder1);
             //按账户分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no");
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000);
 
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
             searchSourceBuilder.query(query);
@@ -1147,7 +1147,7 @@ public class ESForRule {
 
             //按照账户分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no").size(50)
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.count("total_bank_name_count").field("part_bank_name"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt")); //若该桶交易金额小于500000，则没必要再遍历了
 
@@ -1428,14 +1428,14 @@ public class ESForRule {
             queryBuilder.filter(QueryBuilders.termQuery("date2", curDay));
 
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             //按交易账户数量大于等于3过滤
             Map<String, String> bucketsPath = new HashMap<>();
             bucketsPath.put("sum_org_amt", "sum_org_amt");
             //判断每个账户的总交易金额的结尾是否为吉利数
-            Script script = new Script("(params.sum_org_amt - 666)%1000 == 0 || (params.sum_org_amt - 888)%1000 == 0 || (params.sum_org_amt - 99)%100 == 0 ");
+            Script script = new Script("(params.sum_org_amt - 666)%1000 == 0 || (params.sum_org_amt - 666)%1000 == 0.0 ||(params.sum_org_amt - 888)%1000 == 0 || (params.sum_org_amt - 888)%1000 == 0.0 ||(params.sum_org_amt - 99)%100 == 0 || (params.sum_org_amt - 99)%100 == 0.0  ") ;
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
             agg_self_acc_no.subAggregation(bs);
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
@@ -1549,7 +1549,7 @@ public class ESForRule {
             ((BoolQueryBuilder) query).mustNot(queryBuilder3);
             //嵌套子聚合查询
 //            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"));
             agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             searchSourceBuilder.aggregation(agg_cst_no);
@@ -1595,7 +1595,7 @@ public class ESForRule {
                     Double M_org_amt = (Double) sourceAsMap1.get("org_amt");
                     String M_key = M_agent_no + M_agent_name;
                     String trade_date = (String) sourceAsMap1.get("date2");
-                    if (M_agent_name != "@N") {
+                    if (!M_agent_name.equals("@N")) {
                         if (agent_trade_num.containsKey(M_key)) {
                             agent_num = agent_trade_num.get(M_key) + 1;
                             agent_trade_num.put(M_key, agent_num);
@@ -1783,7 +1783,7 @@ public class ESForRule {
 
             //嵌套子聚合查询  以Self_acc_no分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.cardinality("count_nation").field("nation")); //跨境nation数量
 
 
@@ -1791,7 +1791,7 @@ public class ESForRule {
             Map<String, String> bucketsPath = new HashMap<>();
 //            bucketsPath.put("agg_self_acc_no", "agg_self_acc_no");
             bucketsPath.put("count_nation", "count_nation");
-            Script script = new Script("params.count_nation >= 2");
+            Script script = new Script("params.count_nation >= 10");
             BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
             agg_self_acc_no.subAggregation(bs);
 
@@ -1970,7 +1970,7 @@ public class ESForRule {
 
             //嵌套子聚合查询
 //            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no")
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -2129,7 +2129,7 @@ public class ESForRule {
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
 //            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no") //按cst_no聚合
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000) //按cst_no聚合
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             Map<String, String> bucketsPath = new HashMap<>();
@@ -2358,7 +2358,7 @@ public class ESForRule {
             String  cst_no_query = "SELECT tb_acc_txn.Cst_no as tat_cst_no from tb_acc_txn JOIN tb_cst_pers " +
                     " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
                     "where  tb_cst_pers.Id_type = '110021' " +
-                    "and (tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
+                    "and (tb_cst_pers.Address1 = tb_cst_pers.Address1 or tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
                     "and tb_acc_txn.Org_amt<10 GROUP BY tb_acc_txn.Cst_no";
             ResultSet res = smt.executeQuery(cst_no_query);
             List<String> cst_no_list = new ArrayList<>();
@@ -2498,7 +2498,7 @@ public class ESForRule {
 
             //按账户分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no");
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000);
 
 //            Map<String, String> bucketsPath = new HashMap<>();
 //            bucketsPath.put("sum_org_amt","sum_org_amt");
@@ -2706,7 +2706,7 @@ public class ESForRule {
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
             //按self_acc_name分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_name");
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no");
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000);
 
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             sourceBuilder.query(query);
@@ -2878,7 +2878,7 @@ public class ESForRule {
 
             //按照账户分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no").size(10000);
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(10000);
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000);
             Map<String, String> bucketsPath = new HashMap<>();
             bucketsPath.put("_count","_count");
             //日累计交易时间在21:00至次日07:00时间段内的交易笔数≥10笔
@@ -3134,7 +3134,7 @@ public class ESForRule {
             ((BoolQueryBuilder) query).filter(queryBuilder2);
 
             //按账号分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_name").field("self_acc_name");
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_name").field("self_acc_name").size(30000);
 
             agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             sourceBuilder.query(query);
