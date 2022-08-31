@@ -1159,10 +1159,10 @@ public class ESForRule {
         BoolQueryBuilder qb = QueryBuilders.boolQuery();
         WildcardQueryBuilder q1 = QueryBuilders.wildcardQuery("part_bank_name", "*邮*");
         WildcardQueryBuilder q2 = QueryBuilders.wildcardQuery("part_bank_name", "*农业*");
-        WildcardQueryBuilder q3 = QueryBuilders.wildcardQuery("part_bank_name", "*信用社*");
+//        WildcardQueryBuilder q3 = QueryBuilders.wildcardQuery("part_bank_name", "*信用*");
         qb.should(q1);
         qb.should(q2);
-        qb.should(q3);
+//        qb.should(q3);
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",qb);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
@@ -1278,10 +1278,10 @@ public class ESForRule {
                     if(bank_name.contains("邮")){
                         youchu_count += 1;
                         youchu_money += transaction_money;
-                    }else if(bank_name.contains("农业")){
+                    }else if(bank_name.contains("农业") || bank_name.contains("农行")){
                         nongye_count += 1;
                         nongye_money += transaction_money;
-                    }else if(bank_name.contains("信用社")){
+                    }else if(bank_name.contains("信用")||bank_name.contains("农信联合社")){
                         xinyongshe_count += 1;
                         xinyongshe_money += transaction_money;
                     }
