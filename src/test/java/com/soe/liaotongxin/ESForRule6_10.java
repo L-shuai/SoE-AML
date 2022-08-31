@@ -473,6 +473,7 @@ public class ESForRule6_10 {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
+
             Calendar calendar = new GregorianCalendar();
             calendar.setTime(sdf.parse(min_max[0]));
             Calendar calendar2 = new GregorianCalendar();

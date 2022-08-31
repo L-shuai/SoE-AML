@@ -1415,6 +1415,84 @@ public class ESForRule {
     }
     @GetMapping("rule_9_new")
     ////@Async
+    public void rule_9_new() throws IOException, ParseException{
+        try {
+            List<String> list = new ArrayList<>();
+            String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+            Calendar calendar = new GregorianCalendar();
+            calendar.setTime(sdf.parse(min_max[0]));
+            Calendar calendar2 = new GregorianCalendar();
+            Class.forName("com.mysql.jdbc.Driver");
+            String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
+            Connection conn = DriverManager.getConnection(url,"soe","soe");
+            Statement smt = conn.createStatement();
+            for (int i=0;i<daysBetween;i++) {
+                //当前时间
+                String curDay = sdf.format(calendar.getTime());
+                //窗口截止时间
+                String eDate = sdf.format(calendar.getTime());
+                calendar2.setTime(sdf.parse(curDay));
+                //窗口起始时间
+                calendar2.add(calendar2.DATE, -2);
+                String bDate = sdf.format(calendar2.getTime());
+                //在时间段内按客户号进行分桶（基于tb_acc_txn表）
+                String  cst_no_query = "select tb_acc_txn.Cst_no as tat_cst_no from tb_cred_txn, tb_acc_txn,tb_cst_unit where tb_acc_txn.Date = tb_cred_txn.Date and " +
+                        "tb_cred_txn.Lend_flag = '11' and tb_cred_txn.Pos_owner != '@N' and " +
+                        "tb_cred_txn.Pos_owner = tb_acc_txn.Self_acc_name and  tb_acc_txn.Lend_flag = '11' " +
+                        "and tb_acc_txn.Part_acc_name = tb_cst_unit.Rep_name and tb_acc_txn.Date between "+"'"+bDate+"'"+" and "+"'"+eDate+"'" +
+                        " Group by  tb_acc_txn.Cst_no";
+                ResultSet res = smt.executeQuery(cst_no_query);
+                List<String> cst_no_list = new ArrayList<>();
+                while(res.next()) {
+                    String cst_no = res.getString("tat_cst_no");
+                    cst_no_list.add(cst_no);
+                }
+                res.close();
+                for(int j = 0; j<cst_no_list.size();j++){
+                    //按照题目描述做多表查询操作
+                    String union_query = "select tb_acc_txn.Self_acc_name as tat_self_acc_name, tb_acc_txn.Date as tat_date " +
+                            "from tb_cred_txn, tb_acc_txn,tb_cst_unit where tb_acc_txn.Date = tb_cred_txn.Date and " +
+                            "tb_cred_txn.Lend_flag = '11' and tb_cred_txn.Pos_owner != '@N' and " +
+                            "tb_cred_txn.Pos_owner = tb_acc_txn.Self_acc_name and  tb_acc_txn.Lend_flag = '11' " +
+                            "and tb_acc_txn.Part_acc_name = tb_cst_unit.Rep_name and tb_acc_txn.Cst_no ="+ "'"+cst_no_list.get(j)+"' " +
+                            "and tb_acc_txn.Date between "+"'"+bDate+"'"+" and "+"'"+eDate+"'";
+                    ResultSet union_res = smt.executeQuery(union_query);
+                    String r_self_acc_name = "";
+                    Calendar calendar1 = new GregorianCalendar();
+                    String r_cst_no =  cst_no_list.get(j);
+                    while(union_res.next()) {
+                        String r_date = union_res.getString("tat_date");
+                        String acc_name = union_res.getString("tat_self_acc_name");
+                        if(r_self_acc_name == ""){
+                            r_self_acc_name = acc_name;
+                        }
+                    }
+                    String record = "JRSJ-009,"+ curDay +","+r_cst_no+","+r_self_acc_name+",,,,";
+                    System.out.println(record);
+                    list.add(record);
+                    union_res.close();
+                }
+                //当日时间往后推一天
+                calendar.add(calendar.DATE, 1);
+            }
+            // 关闭流 (先开后关)
+            smt.close();
+            conn.close();
+            list = removeDuplicationByHashSet(list);
+            CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+            System.out.println("rule_9_new : end");
+            //return list;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @GetMapping("rule_9_no_group")
+    ////@Async
     public void rule_9_no_group() throws IOException, ParseException{
         try {
             List<String> list = new ArrayList<>();
