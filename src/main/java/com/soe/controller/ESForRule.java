@@ -142,7 +142,7 @@ public class ESForRule {
      * 进行条件过滤"
      */
     @GetMapping("rule_1")
-    @Async
+    ////@Async
     public void rule_1() throws IOException, ParseException {
         System.out.println("rule_1 : begin");
 
@@ -181,7 +181,7 @@ public class ESForRule {
 
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000)
                     .subAggregation(AggregationBuilders.cardinality("count_self_bank_code").field("self_bank_code"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -204,7 +204,16 @@ public class ESForRule {
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
 
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -268,7 +277,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_2")
-    @Async
+    ////@Async
     public void rule_2() throws IOException, ParseException {
 //        File file = new File("result.txt");
 //
@@ -341,7 +350,7 @@ public class ESForRule {
 //            ((BoolQueryBuilder) query).mustNot(queryBuilder4);
 
             //嵌套子聚合查询  以agent_no分桶
-            TermsAggregationBuilder agg_agent_no = AggregationBuilders.terms("agg_agent_no").field("agent_no").size(30000)
+            TermsAggregationBuilder agg_agent_no = AggregationBuilders.terms("agg_agent_no").field("agent_no").size(20000)
                     .subAggregation(AggregationBuilders.cardinality("count_self_acc_no").field("self_acc_no")); //账户数量
 
 
@@ -365,7 +374,16 @@ public class ESForRule {
                 System.out.println(searchSourceBuilder.toString());
                 flag = true;
             }
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -458,7 +476,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_3")
-    @Async
+    ////@Async
     public void rule_3() throws IOException, ParseException {
         System.out.println("rule_3 : begin");
 
@@ -503,7 +521,7 @@ public class ESForRule {
 
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_contact1").field("contact1").size(30000)
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_contact1").field("contact1").size(20000)
                     .subAggregation(AggregationBuilders.cardinality("count_cst_no").field("cst_no"));
 //                    .subAggregation(AggregationBuilders.count("sum_org_amt").field("org_amt"));
 
@@ -525,8 +543,16 @@ public class ESForRule {
 
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
 
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -587,7 +613,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_4")
-    @Async
+    ////@Async
     public void rule_4() throws IOException, ParseException {
         System.out.println("rule_4 : begin");
 
@@ -627,7 +653,7 @@ public class ESForRule {
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
 //            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000)
                     .subAggregation(AggregationBuilders.count("count_self_acc_no").field("self_acc_no"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -649,8 +675,16 @@ public class ESForRule {
 
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
 
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -750,7 +784,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_5")
-    @Async
+    ////@Async
     public void rule_5() throws IOException, ParseException {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
@@ -796,7 +830,16 @@ public class ESForRule {
 
             searchRequest.source(searchSourceBuilder);
             //            System.out.println("查询条件：" + searchSourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
 
 
@@ -892,7 +935,7 @@ public class ESForRule {
      * 日累计交易不同交易对手个数≥3
      **/
     @GetMapping("rule_6")
-    @Async
+    ////@Async
     public void rule_6() throws IOException, ParseException {
         //获取最大和最小日期范围
         List<String> list = new ArrayList<>();
@@ -919,7 +962,7 @@ public class ESForRule {
             queryBuilder.filter(QueryBuilders.termQuery("lend_flag", "10"));
             //按账户名进行分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000)
                     .subAggregation(AggregationBuilders.cardinality("count_part_acc_no").field("part_acc_no"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -937,7 +980,16 @@ public class ESForRule {
 
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -982,7 +1034,7 @@ public class ESForRule {
      * 三日整数倍的整百交易笔数≥三日累计总交易笔数*60%
      **/
     @GetMapping("rule_7")
-    @Async
+    ////@Async
     public void rule_7() throws IOException, ParseException {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
@@ -1021,7 +1073,7 @@ public class ESForRule {
             ((BoolQueryBuilder) query).filter(queryBuilder1);
             //按账户分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000);
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000);
 
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
             searchSourceBuilder.query(query);
@@ -1030,7 +1082,16 @@ public class ESForRule {
 
             searchRequest.source(searchSourceBuilder);
     //            System.out.println("查询条件：" + searchSourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
     //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -1097,7 +1158,7 @@ public class ESForRule {
      * 三日交易对方行名称为：邮储银行、农业银行、信用社的交易金额≥500000
      **/
     @GetMapping("rule_8")
-    @Async
+    ////@Async
     public void rule_8() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
         BoolQueryBuilder qb = QueryBuilders.boolQuery();
@@ -1147,7 +1208,7 @@ public class ESForRule {
 
             //按照账户分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no").size(50)
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(10000)
                     .subAggregation(AggregationBuilders.count("total_bank_name_count").field("part_bank_name"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt")); //若该桶交易金额小于500000，则没必要再遍历了
 
@@ -1212,7 +1273,13 @@ public class ESForRule {
                 for (int j = 0; j < len; j++) {
                     Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
                     String bank_name = (String) sourceAsMap1.get("part_bank_name");
-                    Double transaction_money = (Double) sourceAsMap1.get("org_amt");
+//                    System.out.println(sourceAsMap1.get("org_amt"));
+                    //本次交易金额
+                    double transaction_money = 0.0;
+                    if(!(sourceAsMap.get("org_amt").toString()).equals("0")){
+                        transaction_money = (Double) sourceAsMap.get("org_amt");
+                    }
+//                    Double transaction_money = (Double) sourceAsMap1.get("org_amt");
                     if(bank_name.contains("邮")){
                         youchu_count += 1;
                         youchu_money += transaction_money;
@@ -1261,7 +1328,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_9")
-    @Async
+    ////@Async
     public void rule_9() throws IOException, ParseException{
         try {
             List<String> list = new ArrayList<>();
@@ -1347,7 +1414,7 @@ public class ESForRule {
         }
     }
     @GetMapping("rule_9_new")
-    @Async
+    ////@Async
     public void rule_9_no_group() throws IOException, ParseException{
         try {
             List<String> list = new ArrayList<>();
@@ -1404,7 +1471,7 @@ public class ESForRule {
         }
     }
     @GetMapping("rule_10")
-    @Async
+    //@Async
     public void rule_10() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
@@ -1426,9 +1493,9 @@ public class ESForRule {
             BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
             //过滤日期
             queryBuilder.filter(QueryBuilders.termQuery("date2", curDay));
-
+            System.out.println(curDay+"  "+i/daysBetween*1.0 );
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000)
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             //按交易账户数量大于等于3过滤
@@ -1445,7 +1512,16 @@ public class ESForRule {
 
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -1507,7 +1583,7 @@ public class ESForRule {
      * 进行条件过滤"
      */
     @GetMapping("rule_11")
-    @Async
+    //@Async
     public void rule_11() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
@@ -1540,7 +1616,7 @@ public class ESForRule {
             String eDate = sdf.format(calendar2.getTime());
 //            窗口复原
 //            calendar2.setTime(sdf.parse(bDate));
-//            System.out.println(bDate+"  -  "+eDate);
+            System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
 //        3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
@@ -1549,7 +1625,7 @@ public class ESForRule {
             ((BoolQueryBuilder) query).mustNot(queryBuilder3);
             //嵌套子聚合查询
 //            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no").size(20000)
                     .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"));
             agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             searchSourceBuilder.aggregation(agg_cst_no);
@@ -1557,7 +1633,16 @@ public class ESForRule {
             searchSourceBuilder.query(query);
             searchRequest.source(searchSourceBuilder);
             //System.out.println("查询条件：" + searchSourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             //System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
             Aggregations aggregations = searchResponse.getAggregations();
             ParsedTerms txn_per_day = aggregations.get("agg_acc_no");
@@ -1732,7 +1817,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_12")
-    @Async
+    //@Async
     public void rule_12() throws IOException, ParseException {
         System.out.println("rule_12 : begin");
 
@@ -1774,6 +1859,8 @@ public class ESForRule {
 //            窗口复原
 //            calendar2.setTime(sdf.parse(bDate));
 //            System.out.println(bDate+"  -  "+eDate);
+            System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
+
 //        3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
@@ -1783,7 +1870,7 @@ public class ESForRule {
 
             //嵌套子聚合查询  以Self_acc_no分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000)
                     .subAggregation(AggregationBuilders.cardinality("count_nation").field("nation")); //跨境nation数量
 
 
@@ -1808,7 +1895,16 @@ public class ESForRule {
                 System.out.println(searchSourceBuilder.toString());
                 flag = true;
             }
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -1917,7 +2013,7 @@ public class ESForRule {
      */
 
     @GetMapping("rule_13")
-    @Async
+    //@Async
     public void rule_13() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         initHoliday();
@@ -1964,13 +2060,15 @@ public class ESForRule {
 //            窗口复原
 //            calendar2.setTime(sdf.parse(bDate));
 //            System.out.println(bDate+"  -  "+eDate);
+            System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
+
 //        3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
 
             //嵌套子聚合查询
 //            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no").size(30000)
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no").size(20000)
                     .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
@@ -1991,7 +2089,16 @@ public class ESForRule {
             searchSourceBuilder.query(query);
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
             Aggregations aggregations = searchResponse.getAggregations();
@@ -2090,7 +2197,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_14")
-    @Async
+    //@Async
     public void rule_14() throws IOException, ParseException {
         System.out.println("rule_14 : begin");
 
@@ -2120,6 +2227,8 @@ public class ESForRule {
 //        一天为窗口
 //            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(curDay).lte(curDay);
             QueryBuilder queryBuilder1 = QueryBuilders.termQuery("date2",curDay);
+            System.out.println(curDay+"  "+i/daysBetween*1.0+" %");
+
             ((BoolQueryBuilder) query).filter(queryBuilder1);
 //        //公司账户
             QueryBuilder queryBuilder2 = QueryBuilders.termQuery("acc_type", "12");
@@ -2129,7 +2238,7 @@ public class ESForRule {
 
             //嵌套子聚合查询  以self_acc_name账户名称分桶
 //            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000) //按cst_no聚合
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000) //按cst_no聚合
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
             Map<String, String> bucketsPath = new HashMap<>();
@@ -2149,8 +2258,16 @@ public class ESForRule {
 
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
 
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 
             Aggregations aggregations = searchResponse.getAggregations();
 
@@ -2227,7 +2344,7 @@ public class ESForRule {
 
 
     @GetMapping("rule_14_old")
-    @Async
+    //@Async
     public void rule_14_old() throws ParseException, IOException{
         try {
             List<String> list = new ArrayList<>();
@@ -2346,7 +2463,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_15")
-    @Async
+    //@Async
     public void rule_15() throws ParseException, IOException {
         try{
             Class.forName("com.mysql.jdbc.Driver");
@@ -2451,7 +2568,7 @@ public class ESForRule {
      * @return
      */
     @GetMapping("rule_16")
-    @Async
+    //@Async
     public void rule_16() throws ParseException, IOException {
         System.out.println("rule_16 : begin");
         List<String> list = new ArrayList<>();
@@ -2489,6 +2606,8 @@ public class ESForRule {
             //窗口截止时间
             calendar2.add(calendar2.DATE,2);
             String eDate = sdf.format(calendar2.getTime());
+            System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
+
             //3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
@@ -2514,7 +2633,16 @@ public class ESForRule {
 
             searchRequest.source(sourceBuilder);
 //            System.out.println("查询条件："+sourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
 
             //处理聚合结果
@@ -2654,7 +2782,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_17")
-    @Async
+    //@Async
     public void rule_17() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
@@ -2692,6 +2820,8 @@ public class ESForRule {
             //窗口截止时间
             calendar2.add(calendar2.DATE,2);
             String eDate = sdf.format(calendar2.getTime());
+            System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
+
             //3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("open_time").format("yyyyMMdd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
@@ -2706,7 +2836,7 @@ public class ESForRule {
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no");
             //按self_acc_name分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_name");
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000);
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000);
 
             agg_self_acc_no.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             sourceBuilder.query(query);
@@ -2715,7 +2845,16 @@ public class ESForRule {
 
             searchRequest.source(sourceBuilder);
             //System.out.println("查询条件："+sourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             //System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
 
             //处理聚合结果
@@ -2828,7 +2967,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_18")
-    @Async
+    //@Async
     public void rule_18() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
@@ -2858,6 +2997,8 @@ public class ESForRule {
             //窗口截止时间
             calendar2.add(calendar2.DATE,1);
             String eDate = sdf.format(calendar2.getTime());
+            System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
+
             //2天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             System.out.println(bDate+"  "+eDate);
@@ -2878,7 +3019,7 @@ public class ESForRule {
 
             //按照账户分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no").size(10000);
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000);
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000);
             Map<String, String> bucketsPath = new HashMap<>();
             bucketsPath.put("_count","_count");
             //日累计交易时间在21:00至次日07:00时间段内的交易笔数≥10笔
@@ -2892,7 +3033,16 @@ public class ESForRule {
 
             searchRequest.source(sourceBuilder);
             //System.out.println("查询条件：" + sourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             //System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
 
             //处理聚合结果
@@ -2976,7 +3126,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_19")
-    @Async
+    //@Async
     public void rule_19(){
         List<String> list = new ArrayList<>();
         try{
@@ -3088,7 +3238,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_20")
-    @Async
+    //@Async
     public void rule_20() throws IOException, ParseException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
@@ -3126,6 +3276,8 @@ public class ESForRule {
             //窗口截止时间
             calendar2.add(calendar2.DATE,2);
             String eDate = sdf.format(calendar2.getTime());
+            System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
+
             //3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
@@ -3134,7 +3286,7 @@ public class ESForRule {
             ((BoolQueryBuilder) query).filter(queryBuilder2);
 
             //按账号分桶
-            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_name").field("self_acc_name").size(30000);
+            TermsAggregationBuilder agg_self_acc_name = AggregationBuilders.terms("agg_self_acc_name").field("self_acc_name").size(20000);
 
             agg_self_acc_name.subAggregation(AggregationBuilders.topHits("topHits").size(10000));
             sourceBuilder.query(query);
@@ -3143,7 +3295,16 @@ public class ESForRule {
 
             searchRequest.source(sourceBuilder);
             //System.out.println("查询条件："+sourceBuilder.toString());
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+            builder.setHttpAsyncResponseConsumerFactory(
+                    new HttpAsyncResponseConsumerFactory
+                            //修改为5000MB
+                            .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
+            RequestOptions requestOptions=builder.build();
+
+            //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
+//            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             //System.out.println("总条数："+searchResponse.getHits().getTotalHits().value);
 
             //处理聚合结果
@@ -3216,7 +3377,7 @@ public class ESForRule {
 
 
     //    @SneakyThrows
-    @Async
+    //@Async
 //    @ApiOperation("异步 有返回值")
     @GetMapping("searchAll")
     public void searchAll() throws IOException, ParseException {
