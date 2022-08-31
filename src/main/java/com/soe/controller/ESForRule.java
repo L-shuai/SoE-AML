@@ -1421,7 +1421,7 @@ public class ESForRule {
             throw new RuntimeException(e);
         }
     }
-    @GetMapping("rule_9_new")
+    @GetMapping("rule_9_no_group")
     @Async
     public void rule_9_no_group() throws IOException, ParseException{
         try {
