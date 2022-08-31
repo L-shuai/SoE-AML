@@ -537,7 +537,6 @@ public class ESForRule6_10 {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
     }
     @Test
     public void rule_9_no_group_test() throws IOException, ParseException{

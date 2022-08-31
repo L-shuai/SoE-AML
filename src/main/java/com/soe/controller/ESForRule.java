@@ -1420,6 +1420,7 @@ public class ESForRule {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+
     }
     @GetMapping("rule_9_no_group")
     @Async
