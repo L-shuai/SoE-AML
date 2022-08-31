@@ -806,6 +806,7 @@ public class ESForRule6_10 {
         }
     }
 
+
     @Test
     public void rule_15_test() throws IOException, ParseException {
         try{

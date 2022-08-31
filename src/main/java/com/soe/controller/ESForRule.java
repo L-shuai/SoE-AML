@@ -2632,6 +2632,7 @@ public class ESForRule {
             throw new RuntimeException(e);
         }
     }
+
     @GetMapping("rule_15_new")
     public void rule_15_new() throws ParseException, IOException {
         try{
