@@ -873,7 +873,7 @@ public class ESForRule6_10 {
                     lend2_count += 1;
                     lend2_amt += lend_amt;
                 }
-                String record = "JRSJ-0015,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                String record = "JRSJ-015,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                 System.out.println(record);
                 list.add(record);
             }
