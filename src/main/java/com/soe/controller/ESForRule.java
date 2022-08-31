@@ -422,7 +422,7 @@ public class ESForRule {
 //                    Calendar calendar3 = new GregorianCalendar();
 //                    calendar3.setTime(sdf2.parse(sdf2.format(sdf.parse(r_date))));
 //                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
-                    String record = "JRSJ-002," + sdf2.format(r_date) + "," + r_cst_no + "," + r_self_acc_name + ",,,,";
+                    String record = "JRSJ-002," + sdf2.format(sdf.parse(r_date)) + "," + r_cst_no + "," + r_self_acc_name + ",,,,";
                     list.add(record);
 
 //                    System.out.println(record);
@@ -1866,7 +1866,7 @@ public class ESForRule {
 
             //嵌套子聚合查询  以Self_acc_no分桶
 //            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("self_acc_no")
-            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(20000)
+            TermsAggregationBuilder agg_self_acc_no = AggregationBuilders.terms("agg_self_acc_no").field("cst_no").size(30000)
                     .subAggregation(AggregationBuilders.cardinality("count_nation").field("nation")); //跨境nation数量
 
 
