@@ -1159,6 +1159,7 @@ public class ESForRule {
         BoolQueryBuilder qb = QueryBuilders.boolQuery();
         WildcardQueryBuilder q1 = QueryBuilders.wildcardQuery("part_bank_name", "*邮*");
         WildcardQueryBuilder q2 = QueryBuilders.wildcardQuery("part_bank_name", "*农业*");
+
 //        WildcardQueryBuilder q3 = QueryBuilders.wildcardQuery("part_bank_name", "*信用*");
         qb.should(q1);
         qb.should(q2);
