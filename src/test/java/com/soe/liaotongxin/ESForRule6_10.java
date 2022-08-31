@@ -806,6 +806,7 @@ public class ESForRule6_10 {
         }
     }
 
+
     @Test
     public void rule_15_test() throws IOException, ParseException {
         try{
@@ -815,32 +816,39 @@ public class ESForRule6_10 {
             List<String> list = new ArrayList<>();
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Statement smt = conn.createStatement();
-            String  cst_no_query = "SELECT tb_acc_txn.Cst_no as tat_cst_no from tb_acc_txn JOIN tb_cst_pers " +
-                    " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
-                    "where  tb_cst_pers.Id_type = '110021' " +
-                    "and (tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
-                    "and tb_acc_txn.Org_amt<10 GROUP BY tb_acc_txn.Cst_no";
+            String  cst_no_query = "SELECT tb_acc_txn.Org_amt as tat_org_amt, tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Self_acc_name as tat_self_acc_name, " +
+                    "tb_acc_txn.Date as tat_date, tb_acc_txn.Lend_flag as tat_lend_flag from tb_acc_txn,tb_cst_pers as t1 WHERE t1.Id_type = '110021' and tb_acc_txn.Cst_no = t1.Cst_no and\n" +
+                    "(\n" +
+                    "t1.Address1 in \n" +
+                    "(SELECT t2.Address1 from tb_cst_pers as t2 WHERE t2.Id_type = '110021' AND t1.Cst_no != t2.Cst_no and t2.Address1!='@N')\n" +
+                    " or \n" +
+                    "t1.Address1 in\n" +
+                    "(SELECT t3.Address2 from tb_cst_pers as t3 WHERE t3.Id_type = '110021' AND t1.Cst_no != t3.Cst_no and t3.Address2!='@N')\n" +
+                    "or\n" +
+                    "t1.Address1 in\n" +
+                    "(SELECT t4.Address3 from tb_cst_pers as t4 WHERE t4.Id_type = '110021' AND t1.Cst_no != t4.Cst_no and t4.Address3!='@N')\n" +
+                    "or \n" +
+                    "t1.Address2 in\n" +
+                    "(SELECT t5.Address1 from tb_cst_pers as t5 WHERE t5.Id_type = '110021' AND t1.Cst_no != t5.Cst_no and t5.Address1!='@N')\n" +
+                    "or \n" +
+                    "t1.Address2 in\n" +
+                    "(SELECT t6.Address2 from tb_cst_pers as t6 WHERE t6.Id_type = '110021' AND t1.Cst_no != t6.Cst_no and t6.Address2!='@N')\n" +
+                    "or \n" +
+                    "t1.Address2 in\n" +
+                    "(SELECT t7.Address3 from tb_cst_pers as t7 WHERE t7.Id_type = '110021' AND t1.Cst_no != t7.Cst_no and t7.Address1!='@N')\n" +
+                    "or \n" +
+                    "t1.Address3 in\n" +
+                    "(SELECT t8.Address1 from tb_cst_pers as t8 WHERE t8.Id_type = '110021' AND t1.Cst_no != t8.Cst_no and t8.Address2!='@N')\n" +
+                    "or \n" +
+                    "t1.Address3 in\n" +
+                    "(SELECT t9.Address2 from tb_cst_pers as t9 WHERE t9.Id_type = '110021' AND t1.Cst_no != t9.Cst_no and t9.Address3!='@N')\n" +
+                    "or \n" +
+                    "t1.Address3 in\n" +
+                    "(SELECT t10.Address3 from tb_cst_pers as t10 WHERE t10.Id_type = '110021' AND t1.Cst_no != t10.Cst_no and t10.Address3!='@N')\n" +
+                    ")";
             ResultSet res = smt.executeQuery(cst_no_query);
-            List<String> cst_no_list = new ArrayList<>();
+
             while(res.next()) {
-                String acc_no = res.getString("tat_cst_no");
-                cst_no_list.add(acc_no);
-            }
-            res.close();
-            for(int j = 0; j<cst_no_list.size();j++) {
-                //按照题目描述做多表查询操作
-                String union_query = "SELECT tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Self_acc_name as tat_self_acc_name, " +
-                        "tb_acc_txn.Date as tat_date, tb_acc_txn.Lend_flag as tat_lend_flag from tb_acc_txn JOIN tb_cst_pers " +
-                        " ON tb_cst_pers.Cst_no=tb_acc_txn.Cst_no " +
-                        "where  tb_cst_pers.Id_type = '110021' " +
-                        "and (tb_cst_pers.Address1 = tb_cst_pers.Address2 or tb_cst_pers.Address1 = tb_cst_pers.Address3 or tb_cst_pers.Address2 = tb_cst_pers.Address3) " +
-                        "and tb_acc_txn.Org_amt<10 and tb_acc_txn.Cst_no = "+ cst_no_list.get(j);
-                ResultSet union_res = smt.executeQuery(union_query);
-                Date date_max = sdf.parse("1999-01-01");
-                String r_self_acc_name = "";
-                Calendar calendar1 = new GregorianCalendar();
-                String r_cst_no = "";
-                boolean out_flag = false;
                 double lend1_amt = 0;
                 //收款交易笔数
                 int lend1_count =0 ;
@@ -848,44 +856,28 @@ public class ESForRule6_10 {
                 double lend2_amt = 0;
                 //付款交易笔数
                 int lend2_count = 0;
-                while(union_res.next()) {
-                    if (out_flag == false) {
-                        out_flag = true;
-                    }
-                    String r_date = union_res.getString("tat_date");
-                    String cst_no = union_res.getString("tat_cst_no");
-                    String acc_name = union_res.getString("tat_self_acc_name");
-                    String lend_flag = union_res.getString("tat_lend_flag");
-                    Double lend_amt = union_res.getDouble("tat_rmb_amt");
-                    if(lend_flag.equals("10")){
-                        lend1_count += 1;
-                        lend1_amt += lend_amt;
-                    }
-                    if(lend_flag.equals("11")){
-                        lend2_count += 1;
-                        lend2_amt += lend_amt;
-                    }
-                    if(r_cst_no == ""){
-                        r_cst_no = cst_no;
-                    }
-                    if(r_self_acc_name == ""){
-                        r_self_acc_name = acc_name;
-                    }
-                    Date date_new = sdf.parse(r_date);
-                    if(date_max.compareTo(date_new)<0){
-                        calendar1.setTime(date_new);
-                    }
-
+                String r_date = res.getString("tat_date");
+                String r_cst_no = res.getString("tat_cst_no");
+                String r_self_acc_name = res.getString("tat_self_acc_name");
+                String lend_flag = res.getString("tat_lend_flag");
+                Double lend_amt = res.getDouble("tat_rmb_amt");
+                Double org_amt = res.getDouble("tat_org_amt");
+                if(org_amt >= 10){
+                    continue;
                 }
-                if(out_flag == true){
-                    calendar1.add(calendar1.DATE, 1);
-                    String record = "JRSJ-0015,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
-                    System.out.println(record);
-                    list.add(record);
+                if(lend_flag.equals("10")){
+                    lend1_count += 1;
+                    lend1_amt += lend_amt;
                 }
-                union_res.close();
-
+                if(lend_flag.equals("11")){
+                    lend2_count += 1;
+                    lend2_amt += lend_amt;
+                }
+                String record = "JRSJ-015,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                System.out.println(record);
+                list.add(record);
             }
+            res.close();
             smt.close();
             conn.close();
         } catch (ClassNotFoundException e) {
