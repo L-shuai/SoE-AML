@@ -305,10 +305,11 @@ public class ESForRule {
 //        3天的窗口可能含有重复结果
 //        key:代理人身份证号    value:预警日期
         HashMap<String, String> result = new HashMap<String, String>();
+
         SearchRequest searchRequest = new SearchRequest("tb_acc");
 
         for (int i=0;i<daysBetween;i++) {
-
+            List<String> tmp_list = new ArrayList<>();
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
             //构建boolQuery
@@ -408,30 +409,24 @@ public class ESForRule {
                 String r_cst_no = (String) sourceAsMap.get("cst_no");
                 String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
                 ParsedCardinality count_self_acc_no = bucketAggregations.get("count_self_acc_no");
-//                boolean isNew = true;
-//                if (result.containsKey(r_agent_no)) {
-//                    String exist_date = result.get(r_agent_no);
-////                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd");
-//                    if (daysBetween(sdf.parse(r_date), sdf.parse(exist_date)) >= 3) {
-////                        更新value
-//                        result.put(r_agent_no, r_date);
-//                    } else {
-//                        isNew = false;
-//                    }
-//                } else {
-//                    result.put(r_agent_no, r_date);
-//                }
-//                if (isNew) {
+                    boolean isNew = true;
+                    if (tmp_list.contains(r_cst_no)) {
+                        isNew = false;
+                    }
+                tmp_list.add(r_cst_no);
+
+                if (isNew) {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", 代理人身份证="+r_agent_no+", 开户数量="+count_self_acc_no.getValueAsString();
                     //写入到csv文件，注意各列对其，用英文逗号隔开
                     //规则代码,预警日期,客户号,客户名称,折人民币交易金额-收,折人民币交易金额-付,交易笔数收,交易笔数付
-                    Calendar calendar3 = new GregorianCalendar();
-                    calendar3.setTime(sdf2.parse(sdf2.format(sdf.parse(r_date))));
-                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
-                    String record = "JRSJ-002," + sdf2.format(calendar3.getTime()) + "," + r_cst_no + "," + r_self_acc_name + ",,,,";
+//                    Calendar calendar3 = new GregorianCalendar();
+//                    calendar3.setTime(sdf2.parse(sdf2.format(sdf.parse(r_date))));
+//                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                    String record = "JRSJ-002," + sdf2.format(r_date) + "," + r_cst_no + "," + r_self_acc_name + ",,,,";
                     list.add(record);
+
 //                    System.out.println(record);
-//                }
+                }
             }
 
             }
@@ -1367,6 +1362,7 @@ public class ESForRule {
                     cst_no_list.add(cst_no);
                 }
                 res.close();
+                String r_date ="";
                 for(int j = 0; j<cst_no_list.size();j++){
                     //按照题目描述做多表查询操作
                     String union_query = "select tb_cred_txn.Self_acc_name as tct_self_acc_name, tb_cred_txn.Date as tct_date " +
@@ -1384,7 +1380,7 @@ public class ESForRule {
                         continue;
                     }
                     while(union_res.next()) {
-                        String r_date = union_res.getString("tct_date");
+                        r_date = union_res.getString("tct_date");
                         String acc_name = union_res.getString("tct_self_acc_name");
                         if(r_self_acc_name == ""){
                             r_self_acc_name = acc_name;
@@ -1394,10 +1390,10 @@ public class ESForRule {
                             calendar1.setTime(date_new);
                         }
                     }
-                    calendar1.add(calendar1.DATE, 1);
+//                    calendar1.add(calendar1.DATE, 1);
                     SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
-                    String Date_new = sdf1.format(calendar1.getTime());
-                    String record = "JRSJ-009,"+Date_new+","+r_cst_no+","+r_self_acc_name+",,,,";
+//                    String Date_new = sdf1.format(calendar1.getTime());
+                    String record = "JRSJ-009,"+sdf1.format(r_date)+","+r_cst_no+","+r_self_acc_name+",,,,";
                     System.out.println(record);
                     list.add(record);
                     union_res.close();
@@ -1715,10 +1711,10 @@ public class ESForRule {
                     }
                 }
                 if (max_trad_num >= cst_trade_num * 0.6 && max_sum >= 500000) {
-                    Calendar calendar3 = new GregorianCalendar();
-                    calendar3.setTime(max_date);
-                    calendar3.add(calendar3.DATE,1);
-                    String record = "JRSJ-011," + sdf.format(calendar3.getTime()) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f",lend1_amt) + "," +  String.format("%.2f",lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+//                    Calendar calendar3 = new GregorianCalendar();
+//                    calendar3.setTime(max_date);
+//                    calendar3.add(calendar3.DATE,1);
+                    String record = "JRSJ-011," + sdf.format(max_date) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f",lend1_amt) + "," +  String.format("%.2f",lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
                     System.out.println(record);
                     list.add(record);
                 }
@@ -1929,26 +1925,26 @@ public class ESForRule {
 //                String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
 //                System.out.println(record);
 
-                boolean isNew = true;
-                if(result.containsKey(r_cst_no)){
-                    String exist_date = result.get(r_cst_no);
-                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
-                    if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
-//                        更新value
-                        result.put(r_cst_no,r_date);
-                    }else {
-                        isNew = false;
-                    }
-                }else {
-                    result.put(r_cst_no,r_date);
-                }
-                if(isNew)
-                {
+//                boolean isNew = true;
+//                if(result.containsKey(r_cst_no)){
+//                    String exist_date = result.get(r_cst_no);
+//                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+//                    if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+////                        更新value
+//                        result.put(r_cst_no,r_date);
+//                    }else {
+//                        isNew = false;
+//                    }
+//                }else {
+//                    result.put(r_cst_no,r_date);
+//                }
+//                if(isNew)
+//                {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
-                    String record = "JRSJ-012,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
+                    String record = "JRSJ-012,"+sdf.format(eDate)+","+r_cst_no+","+r_self_acc_name+",,,,";
                     list.add(record);
 //                    System.out.println(record);
-                }
+//                }
 
             }
 //            restHighLevelClient.close();
@@ -2535,7 +2531,7 @@ public class ESForRule {
 
                 }
                 if(out_flag == true){
-                    calendar1.add(calendar1.DATE, 1);
+//                    calendar1.add(calendar1.DATE, 1);
                     String record = "JRSJ-015,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
 //                    System.out.println(record);
                     list.add(record);
@@ -2684,6 +2680,7 @@ public class ESForRule {
                 //统计该桶内的收/付款总金额以及 收/付 次数，统计交易对手账户出现次数
                 for (int j = 0; j < len; j++) {
                     Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    r_date = (String) sourceAsMap.get("date2");
                     //单笔交易金额是10000的整数倍(前提条件是整数)
                     double org_amt = (Double) sourceAsMap2.get("org_amt");
                     if((org_amt % (int)org_amt == 0) && ((int) org_amt % 10000 ==0 )){
@@ -2733,10 +2730,10 @@ public class ESForRule {
 //                    if(isNew)
 //                    {
 //                    String record = "日期="+r_date+", "+"客户号="+r_cst_no+", "+"客户名称="+r_self_acc_name+", nation="+r_nation+", nation数量="+count_nation.getValueAsString();
-                    Calendar calendar3 = new GregorianCalendar();
-                    calendar3.setTime(sdf.parse(r_date));
-                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
-                    String record = "JRSJ-016,"+sdf.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+//                    Calendar calendar3 = new GregorianCalendar();
+//                    calendar3.setTime(sdf.parse(r_date));
+//                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                    String record = "JRSJ-016,"+sdf.format(r_date)+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
 
                     list.add(record);
 //                        System.out.println(record);
@@ -2917,9 +2914,9 @@ public class ESForRule {
 //                        }
                     }
                     if(agent_no_rep){
-                        calendar3.setTime(sdf.parse(max_date));
-                        calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
-                        String record1 = "JRSJ-017,"+sdf2.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+",,,,";
+//                        calendar3.setTime(sdf.parse(max_date));
+//                        calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                        String record1 = "JRSJ-017,"+sdf2.format(max_date)+","+r_cst_no+","+r_self_acc_name+",,,,";
 
                         list.add(record1);
 //                        System.out.println(record1);
@@ -3100,9 +3097,9 @@ public class ESForRule {
 
                 }
 //                if(lend_count_rep){
-                calendar3.setTime(sdf.parse(r_date));
-                calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
-                String record1 = "JRSJ-018,"+sdf2.format(calendar3.getTime())+","+r_cst_no+","+r_self_acc_name+ "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+//                calendar3.setTime(sdf.parse(r_date));
+//                calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+                String record1 = "JRSJ-018,"+sdf2.format(r_date)+","+r_cst_no+","+r_self_acc_name+ "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
                 list.add(record1);
 //                System.out.println(record1);
 //                }
@@ -3171,11 +3168,12 @@ public class ESForRule {
                 double lend2_amt = 0;
                 //付款交易笔数
                 int lend2_count = 0;
+                String r_date = "";
                 while(union_res.next()) {
                     if(out_flag == false){
                         out_flag = true;
                     }
-                    String r_date = union_res.getString("tat_date");
+                    r_date = union_res.getString("tat_date");
                     String cst_no = union_res.getString("tat_cst_no");
                     String acc_name = union_res.getString("tat_self_acc_name");
                     String lend_flag = union_res.getString("tat_lend_flag");
@@ -3206,9 +3204,9 @@ public class ESForRule {
 
                 }
                 if(out_flag == true && age_flag == true){
-                    calendar1.add(calendar1.DATE,0);
+//                    calendar1.add(calendar1.DATE,0);
                     //日期为交易日期
-                    String record = "JRSJ-019,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                    String record = "JRSJ-019,"+sdf.format(r_date)+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                     System.out.println(record);
                     list.add(record);
                 }
@@ -3349,26 +3347,26 @@ public class ESForRule {
                 }
                 //该主体nation重复次数>=5
                 if(nation_count_rep){
-                    boolean isNew = true;
-                    if(result.containsKey(r_cst_no)){
-                        String exist_date = result.get(r_cst_no);
-                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
-                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
-//                        更新value
-                            result.put(r_cst_no,r_date);
-                        }else {
-                            isNew = false;
-                        }
-                    }else {
-                        result.put(r_cst_no,r_date);
-                    }
-                    if(isNew)
-                    {
+//                    boolean isNew = true;
+//                    if(result.containsKey(r_cst_no)){
+//                        String exist_date = result.get(r_cst_no);
+//                        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
+//                        if(daysBetween(sdf.parse(r_date),sdf.parse(exist_date))>=3){
+////                        更新value
+//                            result.put(r_cst_no,r_date);
+//                        }else {
+//                            isNew = false;
+//                        }
+//                    }else {
+//                        result.put(r_cst_no,r_date);
+//                    }
+//                    if(isNew)
+//                    {
                         String record1 = "JRSJ-020,"+r_date+","+r_cst_no+","+r_self_acc_name+",,,,";
 
                     list.add(record1);
 //                        System.out.println(record1);
-                    }
+//                    }
                 }
             }
         }
