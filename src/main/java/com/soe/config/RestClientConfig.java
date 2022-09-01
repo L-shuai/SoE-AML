@@ -41,7 +41,7 @@ public class RestClientConfig {
                             public RequestConfig.Builder customizeRequestConfig(
                                     RequestConfig.Builder requestConfigBuilder) {
                                 return requestConfigBuilder.setConnectTimeout(5000 * 1000) // 连接超时（默认为1秒）
-                                        .setSocketTimeout(6000 * 1000);// 套接字超时（默认为30秒）//更改客户端的超时限制默认30秒现在改为100*1000分钟
+                                        .setSocketTimeout(9000 * 1000);// 套接字超时（默认为30秒）//更改客户端的超时限制默认30秒现在改为100*1000分钟
                             }
                         }));// 调整最大重试超时时间（默认为30秒）.setMaxRetryTimeoutMillis(60000);
 
