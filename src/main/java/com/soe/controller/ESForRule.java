@@ -1153,7 +1153,7 @@ public class ESForRule {
      * 三日交易对方行名称为：邮储银行、农业银行、信用社的交易金额≥500000
      **/
     @GetMapping("rule_8")
-    ////@Async
+//    @Async
     public void rule_8() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
         BoolQueryBuilder qb = QueryBuilders.boolQuery();
@@ -1299,9 +1299,9 @@ public class ESForRule {
                 }
                 if(youchu_count + nongye_count + xinyongshe_count >= len *0.5 && youchu_money + nongye_money +xinyongshe_money >= 500000){
                     //预警日期取date+1天
-                    calendar3.setTime(sdf.parse(eDate));
-                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
-                    r_date = sdf.format(calendar3.getTime());
+//                    calendar3.setTime(sdf.parse(eDate));
+//                    calendar3.add(calendar3.DATE, 1); //预警日期：为筛出数据里最大交易日期+1天
+//                    r_date = sdf.format(calendar3.getTime());
                     String record = "JRSJ-008,"+r_date+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
                     list.add(record);
                 }
@@ -1324,7 +1324,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_9")
-    ////@Async
+//    @Async
     public void rule_9() throws IOException, ParseException{
         try {
             List<String> list = new ArrayList<>();
@@ -1411,7 +1411,7 @@ public class ESForRule {
         }
     }
     @GetMapping("rule_9_new")
-    ////@Async
+//    @Async
     public void rule_9_new() throws IOException, ParseException{
         try {
             List<String> list = new ArrayList<>();
@@ -1489,7 +1489,7 @@ public class ESForRule {
         }
     }
     @GetMapping("rule_9_no_group")
-    ////@Async
+    @Async
     public void rule_9_no_group() throws IOException, ParseException{
         try {
             List<String> list = new ArrayList<>();
@@ -1546,7 +1546,7 @@ public class ESForRule {
         }
     }
     @GetMapping("rule_10")
-    //@Async
+//    @Async
     public void rule_10() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
@@ -1658,7 +1658,7 @@ public class ESForRule {
      * 进行条件过滤"
      */
     @GetMapping("rule_11")
-    //@Async
+//    @Async
     public void rule_11() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
@@ -1892,7 +1892,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_12")
-    //@Async
+//    @Async
     public void rule_12() throws IOException, ParseException {
         System.out.println("rule_12 : begin");
 
@@ -2088,7 +2088,7 @@ public class ESForRule {
      */
 
     @GetMapping("rule_13")
-    //@Async
+//    @Async
     public void rule_13() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         initHoliday();
@@ -2272,7 +2272,7 @@ public class ESForRule {
      * @throws ParseException
      */
     @GetMapping("rule_14")
-    //@Async
+//    @Async
     public void rule_14() throws IOException, ParseException {
         System.out.println("rule_14 : begin");
 
@@ -2538,7 +2538,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_15")
-    //@Async
+//    @Async
     public void rule_15() throws ParseException, IOException {
         try{
             Class.forName("com.mysql.jdbc.Driver");
@@ -2629,7 +2629,7 @@ public class ESForRule {
             throw new RuntimeException(e);
         }
     }
-
+//    @Async
     @GetMapping("rule_15_new")
     public void rule_15_new() throws ParseException, IOException {
         try{
@@ -2725,7 +2725,7 @@ public class ESForRule {
      * @return
      */
     @GetMapping("rule_16")
-    //@Async
+//    @Async
     public void rule_16() throws ParseException, IOException {
         System.out.println("rule_16 : begin");
         List<String> list = new ArrayList<>();
@@ -2940,7 +2940,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_17")
-    //@Async
+//    @Async
     public void rule_17() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
@@ -3125,7 +3125,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_18")
-    //@Async
+//    @Async
     public void rule_18() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
@@ -3284,7 +3284,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_19")
-    //@Async
+//    @Async
     public void rule_19(){
         List<String> list = new ArrayList<>();
         try{
@@ -3397,7 +3397,7 @@ public class ESForRule {
      * 进行条件过滤
      */
     @GetMapping("rule_20")
-    //@Async
+//    @Async
     public void rule_20() throws IOException, ParseException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
