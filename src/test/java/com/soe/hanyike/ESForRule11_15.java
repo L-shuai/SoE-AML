@@ -26,9 +26,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
+import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Date;
+
+import static com.soe.utils.ESUtils.daysBetween;
 
 @SpringBootTest
 class ESForRule11_15 {
@@ -39,9 +43,30 @@ class ESForRule11_15 {
     public ESForRule11_15(RestHighLevelClient restHighLevelClient) {
         this.restHighLevelClient = restHighLevelClient;
     }
-
-    static List<String> holiday = new ArrayList<>();
-
+    //static List<String> holiday = new ArrayList<>();
+    static List<String> holiday_begin = new ArrayList<>();
+    static List<String> holiday_end = new ArrayList<>();
+    public static void initHoliday_begin(){
+        holiday_begin.add("2021-02-10");//春节
+        holiday_begin.add("2021-02-25");//元宵
+        holiday_begin.add("2021-04-02");//清明
+        holiday_begin.add("2021-06-11");//端午
+        holiday_begin.add("2021-08-13");//七夕节
+        holiday_begin.add("2021-01-21");//中元节
+        holiday_begin.add("2021-09-18");//中秋
+        holiday_begin.add("2021-10-13");//重阳节
+    }
+    public static void initHoliday_end(){
+        holiday_end.add("2021-02-18");//春节
+        holiday_end.add("2021-02-27");//元宵
+        holiday_end.add("2021-04-06");//清明
+        holiday_end.add("2021-06-15");//端午
+        holiday_end.add("2021-08-15");//七夕节
+        holiday_end.add("2021-08-23");//中元节
+        holiday_end.add("2021-09-22");//中秋
+        holiday_end.add("2021-10-15");//重阳节
+    }
+    /*
     public static void initHoliday() {
         //holiday.add("2021-01-01");//元旦
         //holiday.add("2021-01-02");
@@ -77,7 +102,7 @@ class ESForRule11_15 {
         //holiday.add("2021-10-07");
 
     }
-
+    */
     private static long daysBetween(Date one, Date two) {
         long difference = (one.getTime() - two.getTime()) / 86400000;
         return Math.abs(difference);
@@ -283,57 +308,26 @@ class ESForRule11_15 {
     @Test
     public void rule_13_test() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
-        initHoliday();
-        String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
+        initHoliday_begin();
+        initHoliday_end();
+        int festival_len = holiday_begin.size();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        long daysBetween = daysBetween(sdf.parse(min_max[1]), sdf.parse(min_max[0]));
-
-        Calendar calendar = new GregorianCalendar();
-        calendar.setTime(sdf.parse(min_max[0]));
-        Calendar calendar2 = new GregorianCalendar();
-        Calendar calendar3 = new GregorianCalendar();
         HashMap<String, String> result = new HashMap<String, String>();
         SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
-        for (int i = 0; i < daysBetween; i++) {
-
+        for(int i = 0; i < festival_len; i++) {
+            //Calendar calendar = new GregorianCalendar();
+            //calendar.setTime(sdf.parse(holiday_begin.get(i)));
+            //Calendar calendar2 = new GregorianCalendar();
+            //calendar2.setTime(sdf.parse(holiday_end.get(i)));
+            String bDate = holiday_begin.get(i);
+            String eDate = holiday_end.get(i);
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-
-            //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
-//            当前时间
-            String curDay = sdf.format(calendar.getTime());
-            //判断是否为节假日
-            //Boolean isHoliday = isWorkingDay(curDay);
-            //System.out.println("今天");
-            //System.out.println(curDay);
-            boolean isHoilday = holiday.contains(curDay);
-            //System.out.println(isHoilday);
-            if (isHoilday == false)
-                continue;
-
-            //窗口起始时间
-            calendar3.setTime(sdf.parse(curDay));
-            calendar3.add(calendar3.DATE, -1);
-            String bDate = sdf.format(calendar3.getTime());
-            //System.out.println("昨天");
-            //System.out.println(bDate);
-
-            //窗口截至时间
-            calendar2.setTime(sdf.parse(curDay));
-            calendar2.add(calendar2.DATE, 1);
-            String eDate = sdf.format(calendar2.getTime());
-            // break;
-//            窗口复原
-//            calendar2.setTime(sdf.parse(bDate));
-//            System.out.println(bDate+"  -  "+eDate);
-//        3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
 
-            //嵌套子聚合查询
-            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
-                    .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"))
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("cst_no")
+                    .subAggregation(AggregationBuilders.count("count_acc_no").field("cst_no"))
                     .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
 
 
@@ -354,7 +348,7 @@ class ESForRule11_15 {
             searchRequest.source(searchSourceBuilder);
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
             SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-//            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
+            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
 
             Aggregations aggregations = searchResponse.getAggregations();
 
@@ -393,22 +387,17 @@ class ESForRule11_15 {
                     }
                     String trade_date = (String) sourceAsMap2.get("date2");
                     Date new_date = sdf.parse(trade_date);
-                    if(max_date.compareTo(new_date) < 0 ){
+                    if (max_date.compareTo(new_date) < 0) {
                         max_date = new_date;
                     }
                 }
-//                Calendar calendar4 = new GregorianCalendar();
-//                calendar4.setTime(max_date);
-//                calendar4.add(calendar4.DATE,1);
-//                String record = "JRSJ-013," + sdf.format(calendar4.getTime()) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
                 String record = "JRSJ-013," + sdf.format(max_date) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
                 System.out.println(record);
                 list.add(record);
             }
+            //return list;
         }
-        //return list;
     }
-
     /**
      * 读取tb_cst_unit表中的客户号和注册资金
      */
@@ -578,4 +567,237 @@ class ESForRule11_15 {
         System.out.println("rule_14 : end");
 //        return list;
     }
+
+    @Test
+    public void rule_14_test() throws IOException, ParseException{
+        try {
+            List<String> list = new ArrayList<>();
+            String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
+
+            Calendar calendar = new GregorianCalendar();
+            calendar.setTime(sdf.parse(min_max[0]));
+            Calendar calendar2 = new GregorianCalendar();
+            Class.forName("com.mysql.jdbc.Driver");
+            String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
+            Connection conn = DriverManager.getConnection(url,"soe","soe");
+            Statement smt = conn.createStatement();
+            for (int i=0;i<daysBetween;i++) {
+                calendar.add(calendar.DATE, 1);
+                String curDay = sdf.format(calendar.getTime());
+                //查出每个时间段内符合条件的客户号（基于tb_acc_txn表）
+                String  cst_no_query = "SELECT tb_acc_txn.Cst_no as tbt_cst_no from tb_acc_txn JOIN tb_cst_unit ON tb_acc_txn.Cst_no = tb_cst_unit.Cst_no" +
+                        " where tb_acc_txn.Org_amt >= tb_cst_unit.Reg_amt and tb_acc_txn.Org_amt >= 500000 and tb_acc_txn.Date = '"+curDay+"'"+
+                        "GROUP BY tb_acc_txn.Cst_no";
+                ResultSet res = smt.executeQuery(cst_no_query);
+                List<String> cst_no_list = new ArrayList<>();
+                //将每日分组后的账户添加到list中
+                while(res.next()) {
+                    String acc_no = res.getString("tbt_cst_no");
+                    cst_no_list.add(acc_no);
+                }
+                res.close();
+                //从list中取出每个账户，并按条件查询每日该账户的记录
+                for(int j = 0; j<cst_no_list.size();j++){
+                    //按照题目描述做多表查询操作
+                    String union_query = "SELECT tb_acc_txn.Lend_flag as tat_lend_flag, tb_acc_txn.Rmb_amt as tat_rmb_amt, tb_acc_txn.Cst_no as tat_cst_no, tb_acc_txn.Date as tat_date," +
+                            "tb_acc_txn.Self_acc_name as tat_self_acc_name from tb_acc_txn JOIN tb_cst_unit ON tb_acc_txn.Cst_no = tb_cst_unit.Cst_no" +
+                            " where tb_acc_txn.Org_amt >= tb_cst_unit.Reg_amt and tb_acc_txn.Org_amt >= 500000 and tb_acc_txn.Date = '"+curDay+"'"+
+                            "and tb_acc_txn.Cst_no = "+cst_no_list.get(j);
+                    ResultSet union_res = smt.executeQuery(union_query);
+                    Date date_max = sdf.parse("1999-01-01");
+                    String r_self_acc_name = "";
+                    Calendar calendar1 = new GregorianCalendar();
+                    String r_cst_no = cst_no_list.get(j);
+                    boolean out_flag = false;
+                    //收款总金额
+                    double lend1_amt = 0;
+                    //收款交易笔数
+                    int lend1_count =0 ;
+                    //付款总金额
+                    double lend2_amt = 0;
+                    //付款交易笔数
+                    int lend2_count = 0;
+                    while(union_res.next()) {
+                        if(out_flag == false){
+                            out_flag = true;
+                        }
+                        String r_date = union_res.getString("tat_date");
+                        String cst_no = union_res.getString("tat_cst_no");
+                        String acc_name = union_res.getString("tat_self_acc_name");
+                        String lend_flag = union_res.getString("tat_lend_flag");
+                        Double lend_amt = union_res.getDouble("tat_rmb_amt");
+                        if(lend_flag.equals("10")){
+                            lend1_count += 1;
+                            lend1_amt += lend_amt;
+                        }
+                        if(lend_flag.equals("11")){
+                            lend2_count += 1;
+                            lend2_amt += lend_amt;
+                        }
+                        if(r_cst_no == ""){
+                            r_cst_no = cst_no;
+                        }
+                        if(r_self_acc_name == ""){
+                            r_self_acc_name = acc_name;
+                        }
+                        Date date_new = sdf.parse(r_date);
+                        if(date_max.compareTo(date_new)<0){
+                            calendar1.setTime(date_new);
+                        }
+                    }
+                    if(out_flag == true){
+                        calendar1.add(calendar1.DATE, 1);
+                        String record = "JRSJ-014,"+sdf.format(calendar1.getTime())+","+r_cst_no+","+r_self_acc_name+","+String.format("%.2f",lend1_amt)+","+String.format("%.2f",lend2_amt)+","+String.valueOf(lend1_count)+","+String.valueOf(lend2_count);
+                        System.out.println(record);
+                        list.add(record);
+                    }
+                    union_res.close();
+                }
+            }
+
+
+
+            // 关闭流 (先开后关)
+            smt.close();
+            conn.close();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+/*
+    @Test
+    public void rule_13_test() throws ParseException, IOException {
+        List<String> list = new ArrayList<>();
+        initHoliday();
+        String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        long daysBetween = daysBetween(sdf.parse(min_max[1]), sdf.parse(min_max[0]));
+
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(sdf.parse(min_max[0]));
+        Calendar calendar2 = new GregorianCalendar();
+        Calendar calendar3 = new GregorianCalendar();
+        HashMap<String, String> result = new HashMap<String, String>();
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+        for (int i = 0; i < daysBetween; i++) {
+
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+            //构建boolQuery
+            QueryBuilder query = QueryBuilders.boolQuery();
+            calendar.add(calendar.DATE, 1);
+//            当前时间
+            String curDay = sdf.format(calendar.getTime());
+            //判断是否为节假日
+            //Boolean isHoliday = isWorkingDay(curDay);
+            //System.out.println("今天");
+            //System.out.println(curDay);
+            boolean isHoilday = holiday.contains(curDay);
+            //System.out.println(isHoilday);
+            if (isHoilday == false)
+                continue;
+
+            //窗口起始时间
+            calendar3.setTime(sdf.parse(curDay));
+            calendar3.add(calendar3.DATE, -1);
+            String bDate = sdf.format(calendar3.getTime());
+            //System.out.println("昨天");
+            //System.out.println(bDate);
+
+            //窗口截至时间
+            calendar2.setTime(sdf.parse(curDay));
+            calendar2.add(calendar2.DATE, 1);
+            String eDate = sdf.format(calendar2.getTime());
+            // break;
+//            窗口复原
+//            calendar2.setTime(sdf.parse(bDate));
+//            System.out.println(bDate+"  -  "+eDate);
+//        3天为窗口
+            QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date2").format("yyyy-MM-dd").gte(bDate).lte(eDate);
+            ((BoolQueryBuilder) query).filter(queryBuilder1);
+
+            //嵌套子聚合查询
+            TermsAggregationBuilder agg_cst_no = AggregationBuilders.terms("agg_acc_no").field("self_acc_no")
+                    .subAggregation(AggregationBuilders.count("count_acc_no").field("self_acc_no"))
+                    .subAggregation(AggregationBuilders.sum("sum_org_amt").field("org_amt"));
+
+
+            //子聚合  管道聚合不能包含子聚合
+            Map<String, String> bucketsPath = new HashMap<>();
+            bucketsPath.put("count_acc_no", "count_acc_no");
+            bucketsPath.put("sum_org_amt", "sum_org_amt");
+            Script script = new Script("params.count_acc_no >= 10 && params.sum_org_amt >= 500000");
+            BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
+            agg_cst_no.subAggregation(bs);
+
+            agg_cst_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
+            searchSourceBuilder.aggregation(agg_cst_no);
+            searchSourceBuilder.size(0);
+
+
+            searchSourceBuilder.query(query);
+            searchRequest.source(searchSourceBuilder);
+//            System.out.println("查询条件：" + searchSourceBuilder.toString());
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+//            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
+
+            Aggregations aggregations = searchResponse.getAggregations();
+
+            ParsedTerms txn_per_day = aggregations.get("agg_acc_no");
+            // 获取到分组后的所有bucket
+            List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
+            for (Terms.Bucket bucket : buckets) {
+                // 解析bucket
+                Aggregations bucketAggregations = bucket.getAggregations();
+                ParsedTopHits topHits = bucketAggregations.get("topHits");
+                int len = topHits.getHits().getHits().length;
+                //System.out.println(len);
+                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
+                String r_cst_no = (String) sourceAsMap.get("cst_no");
+//                客户名称
+                String r_self_acc_name = (String) sourceAsMap.get("self_acc_name");
+                //收款总金额
+                double lend1_amt = 0;
+                //收款交易笔数
+                int lend1_count = 0;
+                //付款总金额
+                double lend2_amt = 0;
+                //付款交易笔数
+                int lend2_count = 0;
+                Date max_date = sdf.parse("1999-01-01");
+                for (int j = 0; j < len; j++) {
+                    Map<String, Object> sourceAsMap2 = topHits.getHits().getHits()[j].getSourceAsMap();
+                    //根据Lend_flag判断 收 / 付
+                    String lend_flag = (String) sourceAsMap2.get("lend_flag");
+                    if (lend_flag.equals("10")) { //收
+                        lend1_amt = lend1_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend1_count++;
+                    } else if (lend_flag.equals("11")) {//付
+                        lend2_amt = lend2_amt + (Double) sourceAsMap2.get("rmb_amt");
+                        lend2_count++;
+                    }
+                    String trade_date = (String) sourceAsMap2.get("date2");
+                    Date new_date = sdf.parse(trade_date);
+                    if(max_date.compareTo(new_date) < 0 ){
+                        max_date = new_date;
+                    }
+                }
+//                Calendar calendar4 = new GregorianCalendar();
+//                calendar4.setTime(max_date);
+//                calendar4.add(calendar4.DATE,1);
+//                String record = "JRSJ-013," + sdf.format(calendar4.getTime()) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+                String record = "JRSJ-013," + sdf.format(max_date) + "," + r_cst_no + "," + r_self_acc_name + "," + String.format("%.2f", lend1_amt) + "," + String.format("%.2f", lend2_amt) + "," + String.valueOf(lend1_count) + "," + String.valueOf(lend2_count);
+                System.out.println(record);
+                list.add(record);
+            }
+        }
+        //return list;
+    }
+ */
 }

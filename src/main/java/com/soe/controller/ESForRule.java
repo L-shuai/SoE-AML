@@ -2037,44 +2037,28 @@ public class ESForRule {
 //        return list;
     }
 
-    private List<String> holiday = new ArrayList<>();
-
-    public  void initHoliday() {
-        //holiday.add("2021-01-01");//元旦
-        //holiday.add("2021-01-02");
-        //holiday.add("2021-01-03");
-        holiday.add("2021-02-11");//春节
-        holiday.add("2021-02-12");
-        holiday.add("2021-02-13");
-        holiday.add("2021-02-14");
-        holiday.add("2021-02-15");
-        holiday.add("2021-02-16");
-        holiday.add("2021-02-17");
-        holiday.add("2021-02-26");//元宵节
-        holiday.add("2021-04-03");//清明节
-        holiday.add("2021-04-04");
-        holiday.add("2021-04-05");
-        //holiday.add("2021-05-01");//劳动节
-        //holiday.add("2021-05-02");
-        //holiday.add("2021-05-03");
-        //holiday.add("2021-05-04");
-        //holiday.add("2021-05-05");
-        holiday.add("2021-06-12");//端午节
-        holiday.add("2021-06-13");
-        holiday.add("2021-06-14");
-        holiday.add("2021-09-19");//中秋节
-        holiday.add("2021-09-20");
-        holiday.add("2021-09-21");
-        //holiday.add("2021-10-01");//国庆节
-        //holiday.add("2021-10-02");
-        //holiday.add("2021-10-03");
-        //holiday.add("2021-10-04");
-        //holiday.add("2021-10-05");
-        //holiday.add("2021-10-06");
-        //holiday.add("2021-10-07");
-
+    static List<String> holiday_begin = new ArrayList<>();
+    static List<String> holiday_end = new ArrayList<>();
+    public static void initHoliday_begin(){
+        holiday_begin.add("2021-02-10");//春节
+        holiday_begin.add("2021-02-25");//元宵
+        holiday_begin.add("2021-04-02");//清明
+        holiday_begin.add("2021-06-11");//端午
+        holiday_begin.add("2021-08-13");//七夕节
+        holiday_begin.add("2021-01-21");//中元节
+        holiday_begin.add("2021-09-18");//中秋
+        holiday_begin.add("2021-10-13");//重阳节
     }
-
+    public static void initHoliday_end(){
+        holiday_end.add("2021-02-18");//春节
+        holiday_end.add("2021-02-27");//元宵
+        holiday_end.add("2021-04-06");//清明
+        holiday_end.add("2021-06-15");//端午
+        holiday_end.add("2021-08-15");//七夕节
+        holiday_end.add("2021-08-23");//中元节
+        holiday_end.add("2021-09-22");//中秋
+        holiday_end.add("2021-10-15");//重阳节
+    }
 
     /**
      * 计算周期：无（根据节假日计算）
@@ -2091,50 +2075,23 @@ public class ESForRule {
     //@Async
     public void rule_13() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
-        initHoliday();
-        String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
+        initHoliday_begin();
+        initHoliday_end();
+        int festival_len = holiday_begin.size();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        long daysBetween = daysBetween(sdf.parse(min_max[1]), sdf.parse(min_max[0]));
-
-        Calendar calendar = new GregorianCalendar();
-        calendar.setTime(sdf.parse(min_max[0]));
-        Calendar calendar2 = new GregorianCalendar();
-        Calendar calendar3 = new GregorianCalendar();
         HashMap<String, String> result = new HashMap<String, String>();
         SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
-        for (int i = 0; i < daysBetween; i++) {
 
+
+        for (int i = 0; i < festival_len; i++) {
+            String bDate = holiday_begin.get(i);
+            String eDate = holiday_end.get(i);
+            long daysBetween = daysBetween(sdf.parse(bDate),sdf.parse(eDate));
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
             //构建boolQuery
             QueryBuilder query = QueryBuilders.boolQuery();
-            calendar.add(calendar.DATE, 1);
-//            当前时间
-            String curDay = sdf.format(calendar.getTime());
-            //判断是否为节假日
-            //Boolean isHoliday = isWorkingDay(curDay);
-            //System.out.println("今天");
-            //System.out.println(curDay);
-            boolean isHoilday = holiday.contains(curDay);
-            //System.out.println(isHoilday);
-            if (isHoilday == false)
-                continue;
 
-            //窗口起始时间
-            calendar3.setTime(sdf.parse(curDay));
-            calendar3.add(calendar3.DATE, -1);
-            String bDate = sdf.format(calendar3.getTime());
-            //System.out.println("昨天");
-            //System.out.println(bDate);
-
-            //窗口截至时间
-            calendar2.setTime(sdf.parse(curDay));
-            calendar2.add(calendar2.DATE, 1);
-            String eDate = sdf.format(calendar2.getTime());
-            // break;
-//            窗口复原
-//            calendar2.setTime(sdf.parse(bDate));
-//            System.out.println(bDate+"  -  "+eDate);
             System.out.println(bDate+"  -  "+eDate+"  "+i/daysBetween*1.0+" %");
 
 //        3天为窗口
