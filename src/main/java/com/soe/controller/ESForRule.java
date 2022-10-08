@@ -27,6 +27,7 @@ import org.elasticsearch.search.aggregations.pipeline.BucketSelectorPipelineAggr
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,6 +37,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Date;
+import java.util.concurrent.Future;
 
 import static com.soe.utils.ESUtils.daysBetween;
 
@@ -143,7 +145,7 @@ public class ESForRule {
      */
     @GetMapping("rule_1")
     @Async
-    public void rule_1() throws IOException, ParseException {
+    public Future<String> rule_1() throws IOException, ParseException {
         System.out.println("rule_1 : begin");
 
         List<String> list = new ArrayList<>();
@@ -261,7 +263,8 @@ public class ESForRule {
 
 //        }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_1 : end");
+//        System.out.println("rule_1 : end");
+        return new AsyncResult<>("rule_1 : end");
 //        return list;
     }
 
@@ -278,7 +281,7 @@ public class ESForRule {
      */
     @GetMapping("rule_2")
     @Async
-    public void rule_2() throws IOException, ParseException {
+    public Future<String> rule_2() throws IOException, ParseException {
 //        File file = new File("result.txt");
 //
 //        if (!file.exists()) {
@@ -437,7 +440,8 @@ public class ESForRule {
 //        }
         list = removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_2 : end");
+//        System.out.println("rule_2 : end");
+        return new AsyncResult<>("rule_2 : end");
 //    return list;
     }
 
@@ -472,7 +476,7 @@ public class ESForRule {
      */
     @GetMapping("rule_3")
     @Async
-    public void rule_3() throws IOException, ParseException {
+    public Future<String> rule_3() throws IOException, ParseException {
         System.out.println("rule_3 : begin");
 
         List<String> list = new ArrayList<>();
@@ -590,7 +594,8 @@ public class ESForRule {
 
 //        }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_3 : end");
+//        System.out.println("rule_3 : end");
+        return new AsyncResult<>("rule_3 : end");
 //        return list;
     }
 
@@ -609,7 +614,7 @@ public class ESForRule {
      */
     @GetMapping("rule_4")
     @Async
-    public void rule_4() throws IOException, ParseException {
+    public Future<String> rule_4() throws IOException, ParseException {
         System.out.println("rule_4 : begin");
 
         List<String> list = new ArrayList<>();
@@ -738,7 +743,8 @@ public class ESForRule {
 
 //        }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_4 : end");
+//        System.out.println("rule_4 : end");
+        return new AsyncResult<>("rule_4 : end");
 //        return list;
     }
 
@@ -780,7 +786,7 @@ public class ESForRule {
      */
     @GetMapping("rule_5")
     @Async
-    public void rule_5() throws IOException, ParseException {
+    public Future<String> rule_5() throws IOException, ParseException {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
@@ -915,7 +921,8 @@ public class ESForRule {
         }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
 
-        System.out.println("rule_5 : end");
+//        System.out.println("rule_5 : end");
+        return new AsyncResult<>("rule_5 : end");
 //        return list;
     }
 
@@ -931,7 +938,7 @@ public class ESForRule {
      **/
     @GetMapping("rule_6")
     @Async
-    public void rule_6() throws IOException, ParseException {
+    public Future<String> rule_6() throws IOException, ParseException {
         //获取最大和最小日期范围
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
@@ -1015,7 +1022,8 @@ public class ESForRule {
             }
         }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_6 : end");
+//        System.out.println("rule_6 : end");
+        return new AsyncResult<>("rule_6 : end");
 //        return list;
 
     }
@@ -1030,7 +1038,7 @@ public class ESForRule {
      **/
     @GetMapping("rule_7")
     @Async
-    public void rule_7() throws IOException, ParseException {
+    public Future<String> rule_7() throws IOException, ParseException {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
@@ -1139,7 +1147,8 @@ public class ESForRule {
             }
         }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_7 : end");
+//        System.out.println("rule_7 : end");
+        return new AsyncResult<>("rule_7 : end");
 //        return list;
     }
     /**
@@ -1154,7 +1163,7 @@ public class ESForRule {
      **/
     @GetMapping("rule_8")
     @Async
-    public void rule_8() throws IOException, ParseException{
+    public Future<String> rule_8() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
         BoolQueryBuilder qb = QueryBuilders.boolQuery();
         WildcardQueryBuilder q1 = QueryBuilders.wildcardQuery("part_bank_name", "*邮*");
@@ -1308,7 +1317,8 @@ public class ESForRule {
             }
         }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_8 : end");
+//        System.out.println("rule_8 : end");
+        return new AsyncResult<>("rule_8 : end");
     }
     /**
      * 计算周期：三日（交易日期）
@@ -1325,7 +1335,7 @@ public class ESForRule {
      */
     @GetMapping("rule_9")
     @Async
-    public void rule_9() throws IOException, ParseException{
+    public Future<String> rule_9() throws IOException, ParseException{
         try {
             List<String> list = new ArrayList<>();
             String[] min_max = get_Min_Max("tb_cred_txn", "date",null);
@@ -1402,7 +1412,8 @@ public class ESForRule {
             }
             list = removeDuplicationByHashSet(list);
             CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-            System.out.println("rule_9 : end");
+//            System.out.println("rule_9 : end");
+            return new AsyncResult<>("rule_9 : end");
             //return list;
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
@@ -1547,7 +1558,7 @@ public class ESForRule {
     }
     @GetMapping("rule_10")
     @Async
-    public void rule_10() throws IOException, ParseException{
+    public Future<String> rule_10() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2",null);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -1641,7 +1652,8 @@ public class ESForRule {
             }
         }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_10 : end");
+//        System.out.println("rule_10 : end");
+        return new AsyncResult<>("rule_10 : end");
 //        return list;
     }
 
@@ -1659,7 +1671,7 @@ public class ESForRule {
      */
     @GetMapping("rule_11")
     @Async
-    public void rule_11() throws ParseException, IOException {
+    public Future<String> rule_11() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         String[] min_max = get_Min_Max("tb_acc_txn", "date2", null);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -1803,7 +1815,8 @@ public class ESForRule {
         }
         list = removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_11 : end");
+//        System.out.println("rule_11 : end");
+        return new AsyncResult<>("rule_11 : end");
         //return list;
     }
 
@@ -1893,7 +1906,7 @@ public class ESForRule {
      */
     @GetMapping("rule_12")
     @Async
-    public void rule_12() throws IOException, ParseException {
+    public Future<String> rule_12() throws IOException, ParseException {
         System.out.println("rule_12 : begin");
 
         List<String> list = new ArrayList<>();
@@ -2033,7 +2046,8 @@ public class ESForRule {
 //        }
 
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_12 : end");
+//        System.out.println("rule_12 : end");
+        return new AsyncResult<>("rule_12 : end");
 //        return list;
     }
 
@@ -2073,7 +2087,7 @@ public class ESForRule {
 
     @GetMapping("rule_13")
     @Async
-    public void rule_13() throws ParseException, IOException {
+    public Future<String> rule_13() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         initHoliday_begin();
         initHoliday_end();
@@ -2184,6 +2198,7 @@ public class ESForRule {
         }
         list = removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        return new AsyncResult<>("rule_13 : end");
         //return list;
     }
 
@@ -2230,7 +2245,7 @@ public class ESForRule {
      */
     @GetMapping("rule_14")
     @Async
-    public void rule_14() throws IOException, ParseException {
+    public Future<String> rule_14() throws IOException, ParseException {
         System.out.println("rule_14 : begin");
 
         List<String> list = new ArrayList<>();
@@ -2370,7 +2385,8 @@ public class ESForRule {
 
 //        }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_14 : end");
+//        System.out.println("rule_14 : end");
+        return new AsyncResult<>("rule_14 : end");
 //        return list;
     }
 
@@ -2588,7 +2604,7 @@ public class ESForRule {
     }
     @Async
     @GetMapping("rule_15_new")
-    public void rule_15_new() throws ParseException, IOException {
+    public Future<String> rule_15_new() throws ParseException, IOException {
         try{
             Class.forName("com.mysql.jdbc.Driver");
             String url = "jdbc:mysql://202.118.11.39:3306/ccf41_cp?characterEncoding=UTF-8";
@@ -2662,7 +2678,8 @@ public class ESForRule {
             conn.close();
             list = removeDuplicationByHashSet(list);
             CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-            System.out.println("rule_15 : end");
+//            System.out.println("rule_15 : end");
+            return new AsyncResult<>("rule_15 : end");
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         } catch (SQLException e) {
@@ -2683,7 +2700,7 @@ public class ESForRule {
      */
     @GetMapping("rule_16")
     @Async
-    public void rule_16() throws ParseException, IOException {
+    public Future<String> rule_16() throws ParseException, IOException {
         System.out.println("rule_16 : begin");
         List<String> list = new ArrayList<>();
 
@@ -2866,7 +2883,8 @@ public class ESForRule {
         }
         list = removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_16 : end");
+//        System.out.println("rule_16 : end");
+        return new AsyncResult<>("rule_16 : end");
 //        return list;
     }
 
@@ -2898,7 +2916,7 @@ public class ESForRule {
      */
     @GetMapping("rule_17")
     @Async
-    public void rule_17() throws ParseException, IOException {
+    public Future<String> rule_17() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
         String[] min_max = get_Min_Max("tb_acc","open_time",QueryBuilders.termQuery("open_type1","11"));
@@ -3067,7 +3085,8 @@ public class ESForRule {
         }
         list = removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
-        System.out.println("rule_17 : end");
+//        System.out.println("rule_17 : end");
+        return new AsyncResult<>("rule_17 : end");
     }
 
 
@@ -3083,7 +3102,7 @@ public class ESForRule {
      */
     @GetMapping("rule_18")
     @Async
-    public void rule_18() throws ParseException, IOException {
+    public Future<String> rule_18() throws ParseException, IOException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
         String[] min_max = get_Min_Max("tb_acc_txn","date2",QueryBuilders.termQuery("acc_type","12"));
@@ -3227,6 +3246,7 @@ public class ESForRule {
         }
         removeDuplicationByHashSet(list);
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        return new AsyncResult<>("rule_18 : end");
 
     }
 
@@ -3242,7 +3262,7 @@ public class ESForRule {
      */
     @GetMapping("rule_19")
     @Async
-    public void rule_19(){
+    public Future<String> rule_19(){
         List<String> list = new ArrayList<>();
         try{
             Class.forName("com.mysql.jdbc.Driver");
@@ -3341,6 +3361,7 @@ public class ESForRule {
             e.printStackTrace();
         }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        return new AsyncResult<>("rule_19 : end");
     }
 
 
@@ -3355,7 +3376,7 @@ public class ESForRule {
      */
     @GetMapping("rule_20")
     @Async
-    public void rule_20() throws IOException, ParseException {
+    public Future<String> rule_20() throws IOException, ParseException {
         List<String> list = new ArrayList<>();
         //获取最大和最小日期范围
         String[] min_max = get_Min_Max("tb_acc_txn","date2",QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("bord_flag","11")));
@@ -3489,6 +3510,7 @@ public class ESForRule {
             }
         }
         CsvUtil.writeToCsv(headDataStr, list, csvfile, true);
+        return new AsyncResult<>("rule_20 : end");
     }
 
 
