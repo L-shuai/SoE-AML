@@ -1360,6 +1360,7 @@ public class ESForRule6_10 {
         }
     }
 
+
     @Test
     public void rule_last_test() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
