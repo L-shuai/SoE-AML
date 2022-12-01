@@ -45,48 +45,46 @@ public class ESForRule6_10 {
     @Autowired
     @Qualifier("restHighLevelClient")
     private RestHighLevelClient restHighLevelClient;
-    public int getAgefromBirthTime(@NotNull String idCard){
-        String birthTimeString = idCard.substring(6, 10) + "-" + idCard.substring(10, 12) + "-" + idCard.substring(12, 14);
-        // 先截取到字符串中的年、月、日
-        String strs[] = birthTimeString.trim().split("-");
-        int selectYear = Integer.parseInt(strs[0]);
-        int selectMonth= Integer.parseInt(strs[1]);
-        int selectDay = Integer.parseInt(strs[2]);
-        // 得到当前时间的年、月、日
-        Calendar cal = Calendar.getInstance();
-        int yearNow = cal.get(Calendar.YEAR);
-        int monthNow= cal.get(Calendar.MONTH) + 1;
-        int dayNow = cal.get(Calendar.DATE);
-        // 用当前年月日减去生日年月日
-        int yearMinus = yearNow - selectYear;
-        int monthMinus= monthNow - selectMonth;
-        int dayMinus = dayNow - selectDay;
-        int age = yearMinus;
-        if (yearMinus <0) {// 选了未来的年份
-            age = 0;
-        } else if (yearMinus == 0) {// 同年的，要么为1，要么为0
-            if (monthMinus <0) {// 选了未来的月份
-                age = 0;
-            } else if (monthMinus== 0) {// 同月份的
-                if (dayMinus <0) {// 选了未来的日期
-                    age = 0;
-                } else if (dayMinus >= 0) {
-                    age = 1;
-                }
-            } else if (monthMinus > 0) {
-                age = 1;
+    public int countAge(String idNumber) {
+        //String idNumber = "410182199906250346";
+        if(idNumber.length() != 18 && idNumber.length() != 15){
+            return -1;
+        }
+        String year;
+        String yue;
+        String day;
+        if(idNumber.length() == 18){
+            year = idNumber.substring(6).substring(0, 4);// 得到年份
+            yue = idNumber.substring(10).substring(0, 2);// 得到月份
+            day = idNumber.substring(12).substring(0,2);//得到日
+        }else{
+            year = "19" + idNumber.substring(6, 8);// 年份
+            yue = idNumber.substring(8, 10);// 月份
+            day = idNumber.substring(10, 12);//日
+        }
+        Date date = new Date();// 得到当前的系统时间
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        String fyear = format.format(date).substring(0, 4);// 当前年份
+        String fyue = format.format(date).substring(5, 7);// 月份
+        String fday=format.format(date).substring(8,10);//
+        int age = 0;
+        if(Integer.parseInt(yue) == Integer.parseInt(fyue)){//如果月份相同
+            if(Integer.parseInt(day) <= Integer.parseInt(fday)){//说明已经过了生日或者今天是生日
+                age = Integer.parseInt(fyear) - Integer.parseInt(year);
+            } else {
+                age = Integer.parseInt(fyear) - Integer.parseInt(year) - 1;
             }
-        } else if (yearMinus > 0) {
-            if (monthMinus <0) {// 当前月>生日月
-            } else if (monthMinus== 0) {// 同月份的，再根据日期计算年龄
-                if (dayMinus <0) {
-                } else if (dayMinus >= 0) {
-                    age = age + 1;
-                }
-            } else if (monthMinus > 0) {
-                age = age + 1;
+        }else{
+
+            if(Integer.parseInt(yue) < Integer.parseInt(fyue)){
+                //如果当前月份大于出生月份
+                age = Integer.parseInt(fyear) - Integer.parseInt(year);
+            }else{
+                //如果当前月份小于出生月份,说明生日还没过
+                age = Integer.parseInt(fyear) - Integer.parseInt(year) - 1;
             }
         }
+//        System.out.println("age = " + age);
         return age;
     }
 
@@ -1429,8 +1427,9 @@ public class ESForRule6_10 {
                     String r_date = (String) sourceAsMap1.get("date2");
                     String r_cst_no = (String) sourceAsMap1.get("cst_no");
                     String r_acc_name = (String) sourceAsMap1.get("self_acc_name");
-                    int age = getAgefromBirthTime(id_no);
-                    if(age>=18 && age<=65){
+
+                    int age = countAge(id_no);
+                    if(age>=18 && age<=65 || age == -1){
                         continue;
                     }
                     if(NationCount(id_no, bDate, eDate) == false){
@@ -1446,12 +1445,17 @@ public class ESForRule6_10 {
 
     public Boolean NationCount(String id_no, String bDate, String eDate)throws IOException, ParseException{
         SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
-
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
+        bDate = sdf1.format(sdf.parse(bDate));
+        eDate = sdf1.format(sdf.parse(eDate));
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         //构建boolQuery
         QueryBuilder query = QueryBuilders.boolQuery();
-        QueryBuilder queryBuilder1 = QueryBuilders.termQuery("id_no", id_no);
-        ((BoolQueryBuilder) query).must(queryBuilder1);
+        QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date").format("yyyyMMdd").gte(bDate).lte(eDate);
+        ((BoolQueryBuilder) query).filter(queryBuilder1);
+        QueryBuilder queryBuilder2 = QueryBuilders.termQuery("id_no", id_no);
+        ((BoolQueryBuilder) query).must(queryBuilder2);
         CardinalityAggregationBuilder aggregation_cardinality = AggregationBuilders
                 .cardinality("cardinality")  //聚合名称
                 .field("nation");   //分组属性
