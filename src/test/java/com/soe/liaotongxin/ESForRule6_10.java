@@ -29,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
@@ -1360,11 +1361,10 @@ public class ESForRule6_10 {
         }
     }
 
-
     @Test
     public void rule_last_test() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
-        String[] min_max = get_Min_Max("tb_acc", "open_time",null);
+        String[] min_max = get_Min_Max("tb_acc", "open_time",QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("agent_no","@N")));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
@@ -1393,9 +1393,9 @@ public class ESForRule6_10 {
             //3天为窗口
             QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("open_time").format("yyyyMMdd").gte(bDate).lte(eDate);
             ((BoolQueryBuilder) query).filter(queryBuilder1);
-            TermsAggregationBuilder agg_id_no = AggregationBuilders.terms("agg_id_no").field("id_no").size(30000);
-            agg_id_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
-            searchSourceBuilder.aggregation(agg_id_no);
+            TermsAggregationBuilder agg_agent_no = AggregationBuilders.terms("agg_agent_no").field("agent_no").size(30000);
+            agg_agent_no.subAggregation(AggregationBuilders.topHits("topHits").size(30000));
+            searchSourceBuilder.aggregation(agg_agent_no);
             searchSourceBuilder.size(0);
             searchSourceBuilder.query(query);
             searchRequest.source(searchSourceBuilder);
@@ -1406,13 +1406,12 @@ public class ESForRule6_10 {
                             .HeapBufferedResponseConsumerFactory(5000 * 1024 * 1024));
             RequestOptions requestOptions=builder.build();
             //参数1：搜索的请求对象，   参数2：请求配置对象   返回值：查询结果对象
-            SearchResponse searchResponse = restHighLevelClient.search(
-                    , requestOptions);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, requestOptions);
 //            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);  //这里并不是topHits的数量
             Aggregations aggregations = searchResponse.getAggregations();
 
-            ParsedTerms txn_per_day = aggregations.get("agg_id_no");
+            ParsedTerms txn_per_day = aggregations.get("agg_agent_no");
             // 获取到分组后的所有bucket
             List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
             for (Terms.Bucket bucket : buckets) {
@@ -1421,63 +1420,42 @@ public class ESForRule6_10 {
 
                 ParsedTopHits topHits = bucketAggregations.get("topHits");
 
-                Map<String, Object> sourceAsMap = topHits.getHits().getHits()[0].getSourceAsMap();
-                String id_no = (String) sourceAsMap.get("id_no");
-                int cst_age = getAgefromBirthTime(id_no);
-                if(cst_age>=18 && cst_age<=65){
-                    continue;
-                }
                 int len = topHits.getHits().getHits().length;
 
-                String prev_agent_info = "";
-                boolean agent_flag = true;
-                boolean id_flag = true;
-                //判断代理人是否全部相同
                 for (int j = len - 1; j >= 0; j--) {
                     Map<String, Object> sourceAsMap1 = topHits.getHits().getHits()[j].getSourceAsMap();
                     //获取agent_name
-                    String agent_name = (String) sourceAsMap1.get("agent_name");
-                    String agent_no = (String) sourceAsMap1.get("agent_no");
-                    if(prev_agent_info == ""){
-                        prev_agent_info = agent_name + agent_no;
+                    String id_no = (String) sourceAsMap1.get("id_no");
+                    String r_date = (String) sourceAsMap1.get("date2");
+                    String r_cst_no = (String) sourceAsMap1.get("cst_no");
+                    String r_acc_name = (String) sourceAsMap1.get("self_acc_name");
+                    int age = getAgefromBirthTime(id_no);
+                    if(age>=18 && age<=65){
+                        continue;
                     }
-                    else{
-                        //如果agent_name+agent_no和前一个不同，则不满足条件，退出循环
-                        if(agent_name + agent_no != prev_agent_info){
-                            agent_flag = false;
-                            break;
-                        }
+                    if(NationCount(id_no, bDate, eDate) == false){
+                        continue;
                     }
-
-
+                    String record = "JRSJ-101,"+r_date+","+r_cst_no+","+r_acc_name+",,,,";
+                    list.add(record);
                 }
             }
         }
 
     }
 
-    public Boolean condition2(String id_no, String bDate, String eDate)throws IOException, ParseException{
+    public Boolean NationCount(String id_no, String bDate, String eDate)throws IOException, ParseException{
         SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
-        bDate = sdf1.format(sdf.parse(bDate));
-        eDate = sdf1.format(sdf.parse(eDate));
+
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         //构建boolQuery
         QueryBuilder query = QueryBuilders.boolQuery();
-        QueryBuilder queryBuilder1 = QueryBuilders.rangeQuery("date").format("yyyyMMdd").gte(bDate).lte(eDate);
-        ((BoolQueryBuilder) query).filter(queryBuilder1);
-        QueryBuilder queryBuilder2 = QueryBuilders.termQuery("id_no", id_no);
-        ((BoolQueryBuilder) query).must(queryBuilder2);
-        TermsAggregationBuilder agg_id_no = AggregationBuilders.terms("agg_id_no").field("id_no")
-                .subAggregation(AggregationBuilders.cardinality("count_nation").field("nation"));
-        Map<String, String> bucketsPath = new HashMap<>();
-        bucketsPath.put("count_nation", "count_nation");
-        Script script = new Script("params.count_nation >= 5");
-        BucketSelectorPipelineAggregationBuilder bs = PipelineAggregatorBuilders.bucketSelector("filterAgg", bucketsPath, script);
-        agg_id_no.subAggregation(bs);
-        agg_id_no.subAggregation(AggregationBuilders.topHits("topHits").size(10));
-        searchSourceBuilder.aggregation(agg_id_no);
+        QueryBuilder queryBuilder1 = QueryBuilders.termQuery("id_no", id_no);
+        ((BoolQueryBuilder) query).must(queryBuilder1);
+        CardinalityAggregationBuilder aggregation_cardinality = AggregationBuilders
+                .cardinality("cardinality")  //聚合名称
+                .field("nation");   //分组属性
+        searchSourceBuilder.aggregation(aggregation_cardinality);
         searchSourceBuilder.size(0);
         searchSourceBuilder.query(query);
 
@@ -1485,13 +1463,15 @@ public class ESForRule6_10 {
 //            System.out.println("查询条件：" + searchSourceBuilder.toString());
         SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
 //            System.out.println("总条数：" + searchResponse.getHits().getTotalHits().value);
-
         Aggregations aggregations = searchResponse.getAggregations();
+        Cardinality count = aggregations.get("cardinality");
+        if(count.getValue() >= 5) {
+            return true;
+        }
+        else{
+            return false;
+        }
 
-        ParsedTerms txn_per_day = aggregations.get("agg_self_acc_no");
-        // 获取到分组后的所有bucket
-        List<? extends Terms.Bucket> buckets = txn_per_day.getBuckets();
-        return false;
     }
 
 }
