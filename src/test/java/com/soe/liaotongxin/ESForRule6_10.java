@@ -1362,7 +1362,7 @@ public class ESForRule6_10 {
     @Test
     public void rule_last_test() throws IOException, ParseException{
         List<String> list = new ArrayList<>();
-        String[] min_max = get_Min_Max("tb_acc", "open_time",QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("agent_no","@N")));
+        String[] min_max = get_Min_Max("tb_acc_new", "open_time",QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("agent_no","@N")));
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         long daysBetween = daysBetween(sdf.parse(min_max[1]),sdf.parse(min_max[0]));
 
@@ -1444,7 +1444,7 @@ public class ESForRule6_10 {
     }
 
     public Boolean NationCount(String id_no, String bDate, String eDate)throws IOException, ParseException{
-        SearchRequest searchRequest = new SearchRequest("tb_acc_txn");
+        SearchRequest searchRequest = new SearchRequest("tb_acc_txn_new");
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
         bDate = sdf1.format(sdf.parse(bDate));
